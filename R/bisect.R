@@ -3,7 +3,7 @@
 #' @importFrom sf st_crs st_centroid st_transform st_linestring st_sfc st_distance st_point
 #' @importFrom geosphere midPoint
 mkdc <- function(x = "OGC:CRS84") {
-  crs <- sf::st_crs("OGC:CRS84")
+  crs <- sf::st_crs(x)
   function() {
     crs
   }
@@ -28,7 +28,6 @@ arc_split <- function(x, pt) {
 #
 bisect <- function(x, crs, dist = 1000) {
   cl <- curv_len(x, crs)
-
   if (cl > dist) {
     xx <- arc_split(x, arc_centroid(x))
     c(bisect(xx[1L], crs, dist), bisect(xx[2L], crs, dist))

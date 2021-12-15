@@ -14,3 +14,6 @@ Imports:
     sf
 URL: https://github.com/hypertidy/bigcurve
 BugReports: https://github.com/hypertidy/bigcurve/issues
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

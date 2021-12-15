@@ -4,6 +4,8 @@
 # bigcurve
 
 <!-- badges: start -->
+
+[![R-CMD-check](https://github.com/hypertidy/bigcurve/workflows/R-CMD-check/badge.svg)](https://github.com/hypertidy/bigcurve/actions)
 <!-- badges: end -->
 
 The goal of bigcurve is to adaptively densify lines. Like D3’s Flawed
