@@ -1,9 +1,9 @@
 Package: bigcurve
-Title: What the Package Does (One Line, Title Case)
+Title: Adaptive Densifying of Lines
 Version: 0.0.0.9000
 Authors@R: 
     person("Michael D.", "Sumner", , "mdsumner@gmail.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Description: Densify lines adaptively, as required by curvature.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -12,3 +12,5 @@ Imports:
     geosphere,
     glue,
     sf
+URL: https://github.com/hypertidy/bigcurve
+BugReports: https://github.com/hypertidy/bigcurve/issues
