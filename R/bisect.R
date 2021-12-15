@@ -21,11 +21,21 @@ arc_split <- function(x, pt) {
   sf::st_sfc(sf::st_linestring(rbind(x[[1]][1, ], pt)),
   sf::st_linestring(rbind(pt, x[[1]][2, ])), crs = sf::st_crs(x))
 }
-bisect <- function(x) {
-  #sf::st_cast(lwgeom::st_split(x, sf::st_point(arc_centroid(x))))
-  arc_split(x, arc_centroid(x))
-}
+# bisect <- function(x) {
+#   #sf::st_cast(lwgeom::st_split(x, sf::st_point(arc_centroid(x))))
+#   arc_split(x, arc_centroid(x))
+# }
+#
+bisect <- function(x, crs, dist = 1000) {
+  cl <- curv_len(x, crs)
 
+  if (cl > dist) {
+    xx <- arc_split(x, arc_centroid(x))
+    c(bisect(xx[1L], crs, dist), bisect(xx[2L], crs, dist))
+  } else {
+    x
+  }
+}
 #' Segment
 #'
 #' @param x longitude (2, start point, end point)
