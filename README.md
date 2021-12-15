@@ -40,8 +40,8 @@ s <- segment(c(140, -164), c(-89, 80))
 #crs <- laea(runif(1, -180, 180), runif(1, -90, 90))
 #crs <- "+proj=omerc +lon_0=147 +lonc = 180 +gamma=10 +lat_0=-42"
 crs <- "+proj=tmerc +lon_0=147 +lat_0=-42"
-par(mfrow = c(2, 1), mar = rep(0.1, 4))
-plot(s);maps::map(add = T);axis(1);axis(2)
+op <- par(mfrow = c(2, 1), mar = rep(0.2, 4))
+plot(s);maps::map(add = T);axis(1);axis(2); text(s[[1]], lab = c("A", "B"), pos = 2)
 plot(ss <- sf::st_transform(bigcurve:::bisect(s, crs, dist = 3e4), crs))
 xy <- do.call(cbind, maps::map(plot = FALSE)[1:2])
 points(sf::sf_project("OGC:CRS84", crs, xy), pch = ".")
@@ -49,9 +49,30 @@ points(sf::sf_project("OGC:CRS84", crs, xy), pch = ".")
 #> authority_compliant): one or more projected point(s) not finite
 axis(1);axis(2)
 points(sf::st_coordinates(ss)[, c("X", "Y")])
+text(sf::st_coordinates(ss)[c(1, length(ss) * 2), c("X", "Y")], c("A", "B"), pos = 2)
 ```
 
 <img src="man/figures/README-example-1.png" width="100%" />
+
+``` r
+par(op)
+```
+
+If we take that same path (A to B, shortest distance) in a different
+projection we get the *same path* but at different locations, because
+the curvature is a different situation here.
+
+``` r
+crs2 <- "+proj=stere +lon_0=180 +lat_0=20"
+plot(ss <- sf::st_transform(bigcurve:::bisect(s, crs2, dist = 3e4), crs2))
+xy <- do.call(cbind, maps::map(plot = FALSE)[1:2])
+points(sf::sf_project("OGC:CRS84", crs2, xy), pch = ".")
+axis(1);axis(2)
+points(sf::st_coordinates(ss)[, c("X", "Y")])
+text(sf::st_coordinates(ss)[c(1, length(ss) * 2), c("X", "Y")], c("A", "B"), pos = 2)
+```
+
+<img src="man/figures/README-different-1.png" width="100%" />
 
 The proper source of goodness is here:
 
