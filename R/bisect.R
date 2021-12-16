@@ -104,3 +104,43 @@ curv_len <- function(x, proj) {
                              proj_centroid(x, proj)))
 }
 
+
+geocentric <- function (x, rad = 6378137, exag = 1)
+{
+  cosLat = cos(x[, 2L] * pi/180)
+  sinLat = sin(x[, 2L] * pi/180)
+  cosLon = cos(x[, 1L] * pi/180)
+  sinLon = sin(x[, 1L] * pi/180)
+  cbind(rad * cosLat * cosLon,
+        rad * cosLat * sinLon,
+        rad * sinLat)
+}
+clamp1 <- function(x) {
+  xgt <- x > 1
+  xlt <- x < -1
+  if (any(xgt)) x[xgt] <- 1
+  if (any(xlt)) x[xlt] <- -1
+  x
+}
+longlat <- function(x, rad = 6378137) {
+  Zr <- clamp1(x[,3]/rad)
+  cbind(atan2 (x[,2L], x[,1L]), asin (Zr)) * 180/pi
+}
+mid_point <- function(x) {
+  g <- geocentric(x)
+  tg <- tail(g, -1)
+  longlat(tg + (tg - head(g, -1))/2)
+}
+
+## for comparison, ultimately we should use a PROJ geocentric transform OR Karney's geodesic inverse code
+# mid_point_proj <- function(x) {
+#   # sf::sf_project("OGC:CRS84", "+proj=geocent +datum=WGS84",
+#   #                cbind(x, 0))
+#
+#   p <- unclass(sf::st_transform(sf::st_sfc(sf::st_multipoint(cbind(x, 0)),
+#                               crs = "OGC:CRS84"), "+proj=geocent +datum=WGS84")[[1]])
+#   mp <- tail(p, -1) + (tail(p, -1) - head(p, -1))/2
+#   unclass(sf::st_transform(sf::st_sfc(sf::st_multipoint(mp),
+#                                       crs = "+proj=geocent +datum=WGS84"), "OGC:CRS84")[[1]])[,1:2, drop = FALSE]
+# }
+
