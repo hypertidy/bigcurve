@@ -43,10 +43,6 @@ very slow and flaky for now.
 
 ``` r
 library(bigcurve)
-#> The legacy packages maptools, rgdal, and rgeos, underpinning this package
-#> will retire shortly. Please refer to R-spatial evolution reports on
-#> https://r-spatial.org/r/2023/05/15/evolution4.html for details.
-#> This package is now running under evolution status 0
 s <- segment(c(140, -164), c(-89, 80))
 #crs <- laea(runif(1, -180, 180), runif(1, -90, 90))
 #crs <- "+proj=omerc +lon_0=147 +lonc = 180 +gamma=10 +lat_0=-42"
