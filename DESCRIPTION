@@ -11,9 +11,14 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
 Imports: 
     glue,
+    libproj,
     terra
 URL: https://github.com/hypertidy/bigcurve
 BugReports: https://github.com/hypertidy/bigcurve/issues
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+LinkingTo: 
+    cpp11,
+    libproj
+SystemRequirements: C++11
