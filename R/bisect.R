@@ -1,7 +1,10 @@
 #' @importFrom terra project
 rproj_xy <- function(x, target, ..., source = NULL) {
   if (is.null(source)) source <- "OGC:CRS84"
-  suppressWarnings(terra::project(x, to = target, from = source))
+  l <- list(x = x[,1, drop = TRUE], y = x[,2, drop = TRUE])
+  cpp_libproj_init_api()
+
+  do.call(cbind, proj_coords(l, source, target))
 }
 #' Curvature index for a given segment
 #'
@@ -26,13 +29,20 @@ rproj_xy <- function(x, target, ..., source = NULL) {
 #' curv_len(s1, laea(30, -10))
 #' curv_len(s1, laea(0, 0))
 curv_len <- function(x, proj) {
+  clnames <- function(x) {
+    colnames(x) <- c("lon", "lat")
+    x
+  }
   ## here's the magic this is just projecting a point, comparing to its planar centroid
-  stats::dist(rbind(rproj_xy(arc_centroid(x), proj, source = default_crs()),
-                             proj_centroid(x, proj)))
+  geodist::geodist(clnames(rbind(arc_centroid(x),
+                            rproj_xy( proj_centroid(x, proj), source = proj, target = default_crs()))), sequential = TRUE, measure = "vincenty")
 
 }
 
-
+arc_len <- function(x) {
+  colnames(x)<- c("lon", "lat")
+  geodist::geodist(x, sequential = TRUE, measure = "vincenty")
+}
 
 proj_centroid <- function(x, crs) {
   x <- rproj_xy(x, crs, source = default_crs())
@@ -67,11 +77,16 @@ arc_split <- function(x, pt) {
   rbind(x[1L, , drop = FALSE], pt, x[2L, , drop = FALSE])
 }
 
-bisect <- function(x, crs, dist = 1000) {
+bisect <- function(x, crs, dist = 1000, plt = FALSE) {
   cl <- curv_len(x, crs)
-  if (cl > dist) {
+  al <- arc_len(x)
+  if (!is.na(cl) && cl > 10000) {
     xx <- arc_split(x, arc_centroid(x))
-    rbind(bisect(xx[1:2L, , drop = FALSE], crs, dist), bisect(xx[2:3L, , drop = FALSE], crs, dist))
+    if (all(abs(x[1,] - xx[2, ]) < 0.001) || all(abs(x[2, ] - xx[2, ]) < 0.001 )) return(x)
+    nn <<- nn + 1
+    out <- rbind(bisect(xx[1:2L, , drop = FALSE], crs, dist, plt = plt),
+                 bisect(xx[2:3L, , drop = FALSE], crs, dist, plt = plt))
+    return(out)
   } else {
     x
   }

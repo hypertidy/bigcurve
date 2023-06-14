@@ -74,8 +74,7 @@ longlat <- function(x, rad = 6378137) {
 #' @importFrom utils head tail
 mid_point <- function(x) {
   g <- geocentric(x)
-  tg <- tail(g, -1)
-  longlat(tg + (tg - head(g, -1))/2)
+  longlat(cbind(mean(g[,1]), mean(g[,2]), mean(g[,3])))
 }
 
 
