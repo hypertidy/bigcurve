@@ -11,6 +11,12 @@
 The goal of bigcurve is to adaptively densify lines. Like D3’s Flawed
 Example by Mike Bostock.
 
+
+
+TOO UNSTABLE TO USE ATM check back soon :)
+
+
+
 todo
 
 - [ ] speed up
