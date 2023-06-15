@@ -1,6 +1,6 @@
 Package: bigcurve
 Title: Adaptive Densifying of Lines
-Version: 0.0.0.9000
+Version: 0.0.1
 Authors@R: 
     c(person("Michael D.", "Sumner", , "mdsumner@gmail.com", role = c("aut", "cre")), 
       person("Simon", "Wotherspoon", role = "ctb",  comment = "wrote SGAT::trackMdpts adapted here for midpt"))
