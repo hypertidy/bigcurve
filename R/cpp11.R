@@ -12,8 +12,20 @@ mid_pt1 <- function(x1, x2) {
   .Call(`_bigcurve_mid_pt1`, x1, x2)
 }
 
+mid_pt_pairs_gc <- function(lon, lat) {
+  .Call(`_bigcurve_mid_pt_pairs_gc`, lon, lat)
+}
+
+mid_pt_pairs_plane <- function(x, y) {
+  .Call(`_bigcurve_mid_pt_pairs_plane`, x, y)
+}
+
 gc_dist1 <- function(lon1, lat1, lon2, lat2) {
   .Call(`_bigcurve_gc_dist1`, lon1, lat1, lon2, lat2)
+}
+
+dist_2_gc <- function(x0, y0, x1, y1) {
+  .Call(`_bigcurve_dist_2_gc`, x0, y0, x1, y1)
 }
 
 bisect1 <- function(xy, from, to) {

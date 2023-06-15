@@ -136,6 +136,49 @@ doubles mid_pt1(std::vector<double> x1, std::vector<double> x2) {
   return out;
 }
 [[cpp11::register]]
+list mid_pt_pairs_gc(doubles lon, doubles lat) {
+  double dlon, lon1, lat1, lat2, bx, by;
+  writable::doubles lons(lon.size()/2);
+  writable::doubles lats(lon.size()/2);
+
+  for(int i = 0; i < (int)(lon.size()/2);i++) {
+    int s0 = i * 2;
+    int s1 = i * 2 + 1;
+    dlon = lon[s1] * M_PI/180.0 - lon[s0]* M_PI/180.0;
+    lon1 = lon[s0]* M_PI/180.0;
+    lat1 = lat[s0]* M_PI/180.0;
+    lat2 = lat[s1]* M_PI/180.0;
+    bx = cos(lat2) * cos(dlon);
+    by =  cos(lat2) * sin(dlon);
+    lats[i] = atan2(sin(lat1) + sin(lat2), sqrt(pow(cos(lat1) + bx, 2.0) + by * by)) * 180.0 / M_PI;
+    lons[i] =  (lon1 + atan2(by, cos(lat1) + bx)) * 180.0 / M_PI;
+  }
+  writable::list out(2);
+  out[0] = lons;
+  out[1] = lats;
+  out.names() = {"x", "y"};
+  return out;
+}
+
+[[cpp11::register]]
+list mid_pt_pairs_plane(doubles x, doubles y) {
+  writable::doubles xcent(x.size()/2);
+  writable::doubles ycent(y.size()/2);
+
+  for(int i = 0; i < (int)(x.size()/2);i++) {
+    int s0 = i * 2;
+    int s1 = i * 2 + 1;
+    xcent[i] = (x[s0] + x[s1])/2.0;
+    ycent[i] = (y[s0] + y[s1])/2.0;
+
+  }
+  writable::list out(2);
+  out[0] = xcent;
+  out[1] = ycent;
+  out.names() = {"x", "y"};
+  return out;
+}
+[[cpp11::register]]
 double gc_dist1(double lon1, double lat1, double lon2, double lat2) {
 
   double rad =  M_PI/180.0;
@@ -149,30 +192,44 @@ double gc_dist1(double lon1, double lat1, double lon2, double lat2) {
   return M_RAD * acos(pin);
 }
 
-
-
-
-// regular C or C++ code that uses proj_()* functions!
 [[cpp11::register]]
-doubles bisect1(list xy, std::string from, std::string to) {
-  doubles x = xy[0];
-  doubles y = xy[1];
+doubles dist_2_gc(doubles x0, doubles y0, doubles x1, doubles y1) {
+  writable::doubles dout(x0.size());
+
+  for(int i = 0; i < (int)(x0.size());i++) {
+    dout[i] = gc_dist1(x0[i], y0[i], x1[i], y1[i]);
+  }
+
+ return dout;
+}
+
+
+
+[[cpp11::register]]
+doubles bisect_cpp(list xy, std::string from, std::string to) {
 
   PJ_CONTEXT* context = PJ_DEFAULT_CTX;
-
   PJ* trans = proj_create_crs_to_crs(context, from.c_str(), to.c_str(), NULL);
-
   if (trans == NULL) {
     int error_code = proj_context_errno(context);
     stop("Error creating transform: %s", proj_context_errno_string(context, error_code));
   }
+  doubles x = xy[0];
+  doubles y = xy[1];
+
+
 
   writable::doubles xout(x);
   writable::doubles yout(y);
+
   size_t stride = sizeof(double);
 
   // get the arc centroid
-  doubles arc_cent = mid_pt1({x[0], y[0]}, {x[1], y[1]});
+  list mp_gc = mid_pt_pairs_gc(x, y);
+
+  doubles loncent = mp_gc[0];
+  doubles latcent = mp_gc[1];
+
  // get the projected centroid
   proj_trans_generic(
     trans, PJ_FWD,
@@ -182,23 +239,26 @@ doubles bisect1(list xy, std::string from, std::string to) {
     nullptr, stride, 0
   );
 
-  writable::doubles xcent(1);
-  writable::doubles ycent(1);
 
-  xcent[0] = (xout[0] + xout[1])/2.0;
-  ycent[0] = (yout[0] + yout[1])/2.0;
+  list mp = mid_pt_pairs_plane(xout, yout);
+  writable::doubles xcent = mp[0];
+  writable::doubles ycent = mp[1];
 
   proj_trans_generic(
     trans, PJ_INV,
-    REAL(xcent), stride, 1,
-    REAL(ycent), stride, 1,
+    REAL(xcent), stride, xcent.size(),
+    REAL(ycent), stride, ycent.size(),
     nullptr, stride, 0,
     nullptr, stride, 0
   );
 
 
-  double dist = gc_dist1(arc_cent[0], arc_cent[1], xcent[0], ycent[1]);
 
+  doubles dist = dist_2_gc(loncent, latcent, xcent, ycent);
+
+
+
+  //listout[i] = out;
 
   int error_code = proj_errno(trans);
   proj_destroy(trans);
@@ -207,13 +267,5 @@ doubles bisect1(list xy, std::string from, std::string to) {
     stop("Error transforming coords: %s", proj_context_errno_string(context, error_code));
   }
 
-  writable::doubles out(5);
-  out[0] = arc_cent[0];
-  out[1] = arc_cent[1];
-  out[2] = (double)xcent[0];
-  out[3] = (double)ycent[0];
-  out[4] = dist;
-
-  //out.names() = {"dist"};
-  return out;
+  return dist;
 }
