@@ -56,16 +56,16 @@ extern "C" SEXP _bigcurve_dist_2_gc(SEXP x0, SEXP y0, SEXP x1, SEXP y1) {
   END_CPP11
 }
 // proj.cpp
-doubles bisect1(list xy, std::string from, std::string to);
-extern "C" SEXP _bigcurve_bisect1(SEXP xy, SEXP from, SEXP to) {
+list bisect_cpp(list xy, std::string from, std::string to);
+extern "C" SEXP _bigcurve_bisect_cpp(SEXP xy, SEXP from, SEXP to) {
   BEGIN_CPP11
-    return cpp11::as_sexp(bisect1(cpp11::as_cpp<cpp11::decay_t<list>>(xy), cpp11::as_cpp<cpp11::decay_t<std::string>>(from), cpp11::as_cpp<cpp11::decay_t<std::string>>(to)));
+    return cpp11::as_sexp(bisect_cpp(cpp11::as_cpp<cpp11::decay_t<list>>(xy), cpp11::as_cpp<cpp11::decay_t<std::string>>(from), cpp11::as_cpp<cpp11::decay_t<std::string>>(to)));
   END_CPP11
 }
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
-    {"_bigcurve_bisect1",              (DL_FUNC) &_bigcurve_bisect1,              3},
+    {"_bigcurve_bisect_cpp",           (DL_FUNC) &_bigcurve_bisect_cpp,           3},
     {"_bigcurve_cpp_libproj_init_api", (DL_FUNC) &_bigcurve_cpp_libproj_init_api, 0},
     {"_bigcurve_dist_2_gc",            (DL_FUNC) &_bigcurve_dist_2_gc,            4},
     {"_bigcurve_gc_dist1",             (DL_FUNC) &_bigcurve_gc_dist1,             4},

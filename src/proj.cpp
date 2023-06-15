@@ -206,7 +206,7 @@ doubles dist_2_gc(doubles x0, doubles y0, doubles x1, doubles y1) {
 
 
 [[cpp11::register]]
-doubles bisect_cpp(list xy, std::string from, std::string to) {
+list bisect_cpp(list xy, std::string from, std::string to) {
 
   PJ_CONTEXT* context = PJ_DEFAULT_CTX;
   PJ* trans = proj_create_crs_to_crs(context, from.c_str(), to.c_str(), NULL);
@@ -257,6 +257,11 @@ doubles bisect_cpp(list xy, std::string from, std::string to) {
   doubles dist = dist_2_gc(loncent, latcent, xcent, ycent);
 
 
+  writable::list  out(3);
+  out[0] = loncent;
+  out[1] = latcent;
+  out[2] = dist;
+  out.names() = {"x", "y", "dist"};
 
   //listout[i] = out;
 
@@ -267,5 +272,5 @@ doubles bisect_cpp(list xy, std::string from, std::string to) {
     stop("Error transforming coords: %s", proj_context_errno_string(context, error_code));
   }
 
-  return dist;
+  return out;
 }

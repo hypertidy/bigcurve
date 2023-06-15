@@ -28,6 +28,6 @@ dist_2_gc <- function(x0, y0, x1, y1) {
   .Call(`_bigcurve_dist_2_gc`, x0, y0, x1, y1)
 }
 
-bisect1 <- function(xy, from, to) {
-  .Call(`_bigcurve_bisect1`, xy, from, to)
+bisect_cpp <- function(xy, from, to) {
+  .Call(`_bigcurve_bisect_cpp`, xy, from, to)
 }
