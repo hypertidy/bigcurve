@@ -64,61 +64,6 @@ list proj_coords(list xy, std::string from, std::string to) {
 # define M_PI           3.14159265358979323846  /* pi */
 # define M_RAD          6378137.0
 
-// std::vector<double> geocentric_1(double lon, double lat) {
-//
-//   double cosLat = cos(lat * M_PI/180);
-//   double sinLat = sin(lat * M_PI/180);
-//   double cosLon = cos(lon * M_PI/180);
-//   double sinLon = sin(lon * M_PI/180);
-//
-//   double x = M_RAD * cosLat * cosLon;
-//   double y = M_RAD * cosLat * sinLon;
-//   double z = M_RAD * sinLat;
-//
-//  std::vector<double> vout = {x, y, z};
-//  return vout;
-// }
-// [[cpp11::register]]
-// list geocentric_cpp(list xy, double rad, double exag)
-// {
-//   doubles x = xy[0];
-//   doubles y = xy[1];
-//
-//   writable::doubles xout(x.size());
-//   writable::doubles yout(x.size());
-//   writable::doubles zout(x.size());
-//
-//   std::vector<double> xyz(3);
-//   for (int i = 0; i < x.size();i++) {
-//     xyz = geocentric_1(x[i], y[i]);
-//     xout[i] = xyz[0];
-//     yout[i] = xyz[1];
-//     zout[i] = xyz[2];
-//   }
-//   writable::list out = {xout, yout, zout};
-//   out.names() = {"x", "y", "z"};
-//   return out;
-// }
-//
-//
-// double clamp1(double x) {
-//   if (x > 1.0) {
-//     x = 1.0;
-//   }
-//   if (x < -1.0) {
-//     x = -1.0;
-//   }
-//   return x;
-// }
-//
-// std::vector<double> longlat1(std::vector<double> x) {
-//   double Zr = clamp1(x[2]/M_RAD);
-//   std::vector<double> xout(2);
-//   xout[0] = atan2(x[1], x[0]) * 180.0/M_PI;
-//   xout[1] = asin(Zr) * 180.0/M_PI;
-//   return xout;
-// }
-
 [[cpp11::register]]
 doubles mid_pt1(std::vector<double> x1, std::vector<double> x2) {
   double dlon = x2[0] * M_PI/180.0 - x1[0]* M_PI/180.0;
@@ -137,7 +82,7 @@ doubles mid_pt1(std::vector<double> x1, std::vector<double> x2) {
 }
 [[cpp11::register]]
 list mid_pt_pairs_gc(doubles lon, doubles lat) {
-  double dlon, lon1, lat1, lat2, bx, by;
+  double dlon, lon1, lat1, lat2, bx, by, lon0;
   writable::doubles lons(lon.size()/2);
   writable::doubles lats(lon.size()/2);
 
@@ -151,7 +96,8 @@ list mid_pt_pairs_gc(doubles lon, doubles lat) {
     bx = cos(lat2) * cos(dlon);
     by =  cos(lat2) * sin(dlon);
     lats[i] = atan2(sin(lat1) + sin(lat2), sqrt(pow(cos(lat1) + bx, 2.0) + by * by)) * 180.0 / M_PI;
-    lons[i] =  (lon1 + atan2(by, cos(lat1) + bx)) * 180.0 / M_PI;
+    lon0 =  (lon1 + atan2(by, cos(lat1) + bx)) * 180.0 / M_PI;
+    lons[i] = std::fmod((lon0 + 180.0),  360.0) - 180.0;
   }
   writable::list out(2);
   out[0] = lons;

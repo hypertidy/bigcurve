@@ -1,49 +1,79 @@
+library(textures)
+library(bigcurve)
 
-path_to_linestrings <-function(x) {
-  sc <- silicate::SC0(x)
-  #g <- silicate::sc_path(x)
-  v <- silicate::sc_vertex(sc)
-  idx <- do.call(rbind, lapply(sc$object$topology_, \(d) as.matrix(d[c(".vx0", ".vx1")])))
+EXT <- c(-180, 180,  -65, 65)
 
-  v <- v[c(t(idx)), ]
-  v$segment_id <- rep(seq_len(dim(idx)[1L]), each = 2L)
-  sf::st_set_crs(sfheaders::sfc_linestring(v, linestring_id = "segment_id"), sf::st_crs(x))
+xxs <- function(x) {
+  x$vb[1L, x$is]
+}
+yys <- function(x) {
+  x$vb[2L, x$is]
 }
 
-sf::sf_use_s2(FALSE)
-x <- sf::st_crop(subset(rnaturalearth::ne_countries(returnclass = "sf"), sovereignt == "Antarctica"),
-                 sf::st_bbox(c(xmin = -180, xmax = 180, ymin = -90, ymax = 90)))
+prj <- "+proj=lcc +lat_1=-60 +lat_2=-30 +lon_0=100"
+#prj <- "+proj=ortho +lon_0=100"
+#prj <- "+proj=stere +lat_0=-90 +lon_0=147 +lat_ts=-71"
+#prj <- "+proj=tmerc +R=6378137"
+prj <- "+proj=laea +lat_0=-60"
+#prj <- "+proj=ortho +lon_0=-35.000000 +lat_0=58.298038 +R=6378137"
+#prj <- "+proj=tobmerc"
+src <- "+proj=longlat +R=6378137"
+bigcurve:::cpp_libproj_init_api()
+
+segmesh <- segs(c(40, 20), extent = EXT)
+
+#mp_gc <- do.call(cbind, mid_pt_pairs_gc(xxs(segmesh), yys(segmesh)))
+#xy <- rproj_xy(cbind(xxs(segmesh), yys(segmesh)), prj)
+#mp <- rproj_xy(do.call(cbind, mid_pt_pairs_plane(xy[,1], xy[,2])), "OGC:CRS84", source = prj)
 
 
+#d <- geosphere::distGeo(mp_gc, mp)
+#range(d)
+#segmesh <- segmesh2
 
 
-g <- silicate::sc_path(x)
-l <- path_to_linestrings(x)
-
-plot(l)
-proj <- "+proj=vandg"
-plot(sf::st_transform(l, proj))
+nlast <- 0
+while(TRUE) {
+d <- bisect_cpp(list(xxs(segmesh), yys(segmesh)), src, prj)
+bb <- apply(terra::project(cbind(d$x, d$y), to = prj, from = src), 2, range)
 
 
+idx <- which(d$dist > (min(apply(bb, 2, diff) / 4000)))
+if (length(idx) == nlast) break; ## avoid infinite loop
+if (length(idx) < 1) break;
+#verts <- segmesh$is[,idx]
+nv <- ncol(segmesh$vb)
+## add in all the new vertices
 
-l1 <- vector("list", length(l))
-## these are in metres, via lwgeom
-lens <- as.numeric(sf::st_length(l))
-ex <-  sf::st_bbox(sf::st_transform(l, proj))[c(1, 3, 2, 4)]
-minr <- min(c(diff(ex[1:2]), diff(ex[3:4])))
-dist <- 50000
-for (i in seq_along(l)) {
-#  rat <- minr/lens
-  if (lens[i] > 5e5) {
-    l1[[i]] <- bisect(l[i], proj, dist)
-    print(i)
-  } else {
-    l1[[i]] <- l[i]
-  }
+for (i in seq_along(idx)) {
+  segmesh$vb <- cbind(segmesh$vb, c(d$x[idx[i]], d$y[idx[i]], 0, 1))
+  segmesh$is <- cbind(segmesh$is, c(segmesh$is[1,idx[i]], nv + i), ## first newly bisected segmented
+                                  c(nv + i, segmesh$is[2,idx[i]])  ## second ""
+  )
+}
+## now that we've added new vertices and segments, we can safely delete the original segments identified for bisection
+segmesh$is <- segmesh$is[,-idx]
+
+print(length(idx))
+nlast <- length(idx)
 }
 
+projsegmesh <- segmesh
+projsegmesh$vb[1:2, ] <- t(terra::project(t(segmesh$vb[1:2, ]), to = prj, from = src))
+plot(projsegmesh)
+points(t(projsegmesh$vb[1:2, ]))
 
-plot(sf::st_transform(sf::st_sfc(unlist(l1, recursive = FALSE), crs = sf::st_crs(x)), proj))
+## segment length
+x0 <- t(projsegmesh$vb[1:2, projsegmesh$is[1, ]])
+x1 <- t(projsegmesh$vb[1:2, projsegmesh$is[2, ]])
+
+dx <- x0[,1] - x1[,1]
+dy <- x0[,2] - x1[,2]
+len <- sqrt(dx * dx + dy * dy)
+#bad <- len > 1e7
+#projsegmesh$is <- projsegmesh$is[,!bad]
+plot(projsegmesh, asp = 1)
+points(t(projsegmesh$vb), pch = 19, cex = .4)
 
 
 
