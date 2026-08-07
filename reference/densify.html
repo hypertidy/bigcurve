@@ -21,7 +21,7 @@ segment meshes."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bigcurve</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0</span>
       </span>
     </div>
 
@@ -77,9 +77,12 @@ segment meshes.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>a two-column matrix of lon,lat (a path), a list of such
-matrices, or a segment mesh: a list with <code>vb</code> (4 x n vertex matrix,
-rows x, y, z, h) and <code>is</code> (2 x m segment index matrix, 1-based), as
-used by rgl's mesh3d</p></dd>
+matrices, a segment mesh (a list with <code>vb</code>, a 4 x n vertex matrix
+with rows x, y, z, h, and <code>is</code>, a 2 x m segment index matrix,
+1-based, as used by rgl's mesh3d), or a <code>wkpool</code> vertex-pool
+topology from the wkpool package (any wk-handleable geometry via
+<code><a href="https://rdrr.io/pkg/wkpool/man/establish_topology.html" class="external-link">wkpool::establish_topology()</a></code>); pools carrying z or m vertex values
+are refused, as densification cannot invent them at new vertices</p></dd>
 
 
 <dt id="arg-target">target<a class="anchor" aria-label="anchor" href="#arg-target"></a></dt>
@@ -114,7 +117,9 @@ at most doubles the vertex count of a segment)</p></dd>
     <h2>Value</h2>
     <p>the same kind of object as <code>x</code>, with vertices added: a matrix
 for a path, a list of matrices for a list, a mesh with appended
-vertices and refined <code>is</code> for a mesh</p>
+vertices and refined <code>is</code> for a mesh, a <code>wkpool</code> with appended
+vertices (freshly minted <code>.vx</code> ids), refined directed segments, and
+<code>.feature</code> provenance carried onto every refined segment</p>
     </div>
     <div id="details">
     <h2>Details</h2>
