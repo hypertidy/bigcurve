@@ -48,6 +48,33 @@
     </div>
 
     <div class="section level2">
+<h2 class="page-header" data-toc-text="0.1.0" id="bigcurve-010">bigcurve 0.1.0<a class="anchor" aria-label="anchor" href="#bigcurve-010"></a></h2>
+<p>Complete rework of the package around a new adaptive resampling engine, following d3-geo (Bostock). The prototype <code>bisect()</code> interface is gone.</p>
+<div class="section level3">
+<h3 id="new-user-surface-0-1-0">New user surface<a class="anchor" aria-label="anchor" href="#new-user-surface-0-1-0"></a></h3>
+<ul><li><p>New exported function <code><a href="../reference/densify.html">densify()</a></code>, the single verb of the package. Accepts a two-column lon,lat matrix (a path), a list of such matrices, or a segment mesh (rgl mesh3d style <code>vb</code>/<code>is</code>), and returns the same kind of object with vertices inserted only where the target projection demands them.</p></li>
+<li><p><code><a href="../reference/rproj_xy.html">rproj_xy()</a></code> is now exported: forward coordinate transformation with axis normalization (authority codes such as ‘EPSG:4326’ behave as lon,lat input) and <code>NA</code> rather than error for unprojectable points.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="breaking-changes-0-1-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-1-0"></a></h3>
+<ul><li>
+<p>Error is now controlled in the plane of the target projection: the <code>tolerance</code> argument is in projected units (usually metres), or derived from the projected extent as one part in <code>pixels</code> (default</p>
+<ol start="2048" style="list-style-type: decimal"><li>when unset. The old <code>dist</code> metres-on-the-sphere argument (which was accepted but not honoured) is gone.</li>
+</ol></li>
+<li><p>Output coordinates are in the source coordinate system (geographic by default); project the result for plotting.</p></li>
+<li><p>Points outside the domain of the target projection never error: segments touching them are left un-densified and refinement stops at unprojectable midpoints. Clipping is out of scope.</p></li>
+<li><p><code>bisect()</code>, <code>curv_len()</code>, <code>project_segment()</code> and <code>reproj_mesh3d()</code> are removed.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="internals-and-dependencies-0-1-0">Internals and dependencies<a class="anchor" aria-label="anchor" href="#internals-and-dependencies-0-1-0"></a></h3>
+<ul><li><p>New header-only C++ core with no R or PROJ dependency, driving refinement with a target-plane metric: perpendicular distance from the projected great circle midpoint to the planar chord, a parametric shear check, a forced split for arcs wider than 30 degrees, and a maximum depth. Each point is transformed exactly once and no inverse transforms are used, so refinement is dramatically faster than the 0.0.x loop.</p></li>
+<li><p>Links directly to the system PROJ library (&gt;= 8.0) via configure and pkg-config; the libproj package (removed from CRAN) is no longer used. Windows builds use the PROJ shipped with Rtools.</p></li>
+<li><p>Dropped terra, geodist, geosphere, glue, reproj, and all undeclared dependencies; hard dependencies are now cpp11 (LinkingTo) and system PROJ only.</p></li>
+<li><p>Spherical great circle midpoints are used (consistent with d3-geo); this is a display densification tool, not an ellipsoidal geodesy one.</p></li>
+<li><p>README rewritten around <code><a href="../reference/densify.html">densify()</a></code>, with a graticule example using <code><a href="https://hypertidy.github.io/textures/reference/quad.html" class="external-link">textures::segs()</a></code> (textures and maps added to Suggests).</p></li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="page-header" data-toc-text="0.0.1" id="bigcurve-001">bigcurve 0.0.1<a class="anchor" aria-label="anchor" href="#bigcurve-001"></a></h2>
 <ul><li>First version with workable C++ components. Logic needs work but the pieces are in place.</li>
 </ul></div>
