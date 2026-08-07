@@ -1,3 +1,20 @@
+# bigcurve (development version)
+
+* The default input coordinate system is now 'EPSG:4326' rather than
+  'OGC:CRS84' throughout (`densify()`, `rproj_xy()`). Authority codes
+  are axis-normalized on the way into PROJ, so input remains lon,lat
+  either way; 'EPSG:4326' is simply the more familiar name.
+
+* `densify()` gains crs awareness for wkpool input: `source` now
+  defaults to `NULL`, and a pool built with wkpool >= 0.3.0.9000
+  supplies its own crs (as captured from the original geometry by
+  `wkpool::establish_topology()`). An explicit `source` still wins,
+  and inputs with no crs fall back to 'EPSG:4326'.
+
+* The refined pool returned by `densify()` now carries the input
+  pool's crs and geodesic attributes, built through the exported
+  `wkpool::new_wkpool()` constructor when available.
+
 # bigcurve 0.5.0
 
 * `densify()` now accepts wkpool objects (hypertidy/wkpool >= 0.3.0):

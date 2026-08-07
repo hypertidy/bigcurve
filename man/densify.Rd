@@ -7,7 +7,7 @@
 densify(
   x,
   target,
-  source = "OGC:CRS84",
+  source = NULL,
   tolerance = NULL,
   pixels = 2048L,
   max_depth = 16L
@@ -25,9 +25,11 @@ are refused, as densification cannot invent them at new vertices}
 \item{target}{projection for which to densify (proj string, WKT,
 authority code - anything PROJ accepts)}
 
-\item{source}{coordinate system of the input, default 'OGC:CRS84'
-(longitude, latitude); authority codes are axis-normalized so
-'EPSG:4326' input is still given as lon,lat}
+\item{source}{coordinate system of the input; if \code{NULL} (the
+default) a \code{wkpool} input supplies its own crs (as carried by
+wkpool >= 0.3.0.9000) and anything else is taken to be
+'EPSG:4326'; authority codes are axis-normalized so 'EPSG:4326'
+input is still given as lon,lat}
 
 \item{tolerance}{maximum allowed deviation, in units of \code{target}
 (usually metres); if \code{NULL} (the default) it is derived from the

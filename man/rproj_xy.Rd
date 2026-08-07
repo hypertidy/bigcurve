@@ -13,7 +13,8 @@ rproj_xy(x, target, ..., source = NULL)
 
 \item{...}{ignored}
 
-\item{source}{input coordinate system, default 'OGC:CRS84'}
+\item{source}{input coordinate system, default 'EPSG:4326'
+(axis-normalized, so input is lon,lat regardless of authority order)}
 }
 \value{
 two-column matrix of transformed coordinates

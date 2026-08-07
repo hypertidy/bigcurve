@@ -1,4 +1,4 @@
-mkdc <- function(x = "OGC:CRS84") {
+mkdc <- function(x = "EPSG:4326") {
   crs <- x
   function() {
     crs

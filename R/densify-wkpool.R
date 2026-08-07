@@ -12,13 +12,30 @@
 ## the engine's 'parent' index: every output segment inherits from the
 ## input segment it descends from. Added vertices are degree-2 by
 ## construction, so the arc-node structure of the pool is unchanged.
+##
+## Since wkpool 0.3.0.9000 a pool carries its crs (and geodesic flag)
+## per wk convention. When 'source' is not supplied we take it from the
+## pool, falling back to EPSG:4326, and both attributes are carried
+## onto the refined pool.
 
-densify_wkpool <- function(x, target, source = "OGC:CRS84",
+## resolve a pool's crs to something PROJ accepts, or NULL
+pool_crs_proj <- function(x) {
+  crs <- attr(x, "crs", exact = TRUE)
+  if (is.null(crs) || inherits(crs, "wk_crs_inherit")) return(NULL)
+  if (is.character(crs) && length(crs) == 1L && !is.na(crs)) return(crs)
+  if (requireNamespace("wk", quietly = TRUE)) {
+    return(tryCatch(wk::wk_crs_proj_definition(crs), error = function(e) NULL))
+  }
+  NULL
+}
+
+densify_wkpool <- function(x, target, source = NULL,
                            tolerance = NULL, pixels = 2048L,
                            max_depth = 16L) {
   if (!requireNamespace("wkpool", quietly = TRUE)) {
     stop("the 'wkpool' package is required to densify wkpool objects")
   }
+  source <- source %||% pool_crs_proj(x) %||% default_crs()
   v <- wkpool::pool_vertices(x)
   if ("z" %in% names(v) || "m" %in% names(v)) {
     stop("densify() is strictly 2D: this pool carries z/m vertex values, ",
@@ -48,14 +65,24 @@ densify_wkpool <- function(x, target, source = "OGC:CRS84",
   vertices <- data.frame(.vx = vx_all, x = out$x, y = out$y)
 
   ## 0-based positions back to .vx ids; chain order preserves direction
-  fields <- list(.vx0 = vx_all[out$s0 + 1L], .vx1 = vx_all[out$s1 + 1L])
+  vx0 <- vx_all[out$s0 + 1L]
+  vx1 <- vx_all[out$s1 + 1L]
   feat <- wkpool::pool_feature(x)
   if (!is.null(feat)) {
-    fields$.feature <- as.integer(feat[out$parent + 1L])
+    feat <- as.integer(feat[out$parent + 1L])
   }
 
-  ## wkpool does not (yet) export its constructor, so build the rcrd
-  ## directly, honouring new_wkpool()'s invariants (checked above by
-  ## construction: every .vx0/.vx1 is drawn from vertices$.vx)
-  vctrs::new_rcrd(fields, pool = vertices, class = "wkpool")
+  if (utils::packageVersion("wkpool") >= "0.3.0.9000") {
+    ## supported constructor: validates invariants, carries crs/geodesic
+    wkpool::new_wkpool(vertices, vx0, vx1, feature = feat,
+                       crs = attr(x, "crs", exact = TRUE),
+                       geodesic = attr(x, "geodesic", exact = TRUE))
+  } else {
+    ## wkpool < 0.3.0.9000 does not export its constructor: build the
+    ## rcrd directly, honouring new_wkpool()'s invariants (checked above
+    ## by construction: every .vx0/.vx1 is drawn from vertices$.vx)
+    fields <- list(.vx0 = vx0, .vx1 = vx1)
+    if (!is.null(feat)) fields$.feature <- feat
+    vctrs::new_rcrd(fields, pool = vertices, class = "wkpool")
+  }
 }

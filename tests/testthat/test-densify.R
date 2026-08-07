@@ -136,11 +136,30 @@ test_that("wkpool round trip: refine, preserve identity, carry features", {
   ## feature provenance carried, both features refined
   expect_setequal(unique(wkpool::pool_feature(out)),
                   unique(wkpool::pool_feature(pool)))
-  ## added vertices are degree-2: node structure is unchanged
+  ## added vertices are degree-2 within each feature: per-feature node
+  ## structure is unchanged. (Across features the duplicated shared edge
+  ## at lon 80 is refined identically in both copies - the engine always
+  ## splits arcs wider than 30 degrees - so its minted midpoints are
+  ## coincident and become degree-4 vertices, i.e. new nodes, after
+  ## merging. That is correct observation of the refined geometry, so it
+  ## is asserted below, not forbidden.)
+  for (f in unique(wkpool::pool_feature(pool))) {
+    pf <- pool[wkpool::pool_feature(pool) == f]
+    of <- out[wkpool::pool_feature(out) == f]
+    expect_identical(
+      length(wkpool::find_nodes(wkpool::merge_coincident(of))),
+      length(wkpool::find_nodes(wkpool::merge_coincident(pf)))
+    )
+  }
   merged0 <- wkpool::merge_coincident(pool)
   merged1 <- wkpool::merge_coincident(out)
-  expect_identical(length(wkpool::find_nodes(merged1)),
-                   length(wkpool::find_nodes(merged0)))
+  n0 <- wkpool::find_nodes(merged0)
+  n1 <- wkpool::find_nodes(merged1)
+  ## original nodes persist; any new nodes are merged midpoints minted
+  ## on the duplicated shared boundary at lon 80
+  v1 <- wkpool::pool_vertices(merged1)
+  extra <- setdiff(n1, n0)
+  expect_true(all(v1$x[match(extra, v1$.vx)] == 80))
 })
 
 test_that("wkpool with z vertices is refused, not mangled", {
@@ -150,4 +169,31 @@ test_that("wkpool with z vertices is refused, not mangled", {
   pool <- wkpool::establish_topology(g)
   skip_if(!"z" %in% names(wkpool::pool_vertices(pool)))
   expect_error(densify(pool, "+proj=laea +lon_0=40"), "strictly 2D")
+})
+
+
+test_that("wkpool crs: pool supplies source and crs survives densify", {
+  skip_if_not_installed("wkpool", "0.3.0.9000")
+  skip_if_not_installed("wk")
+
+  g <- wk::wkt("LINESTRING (100 -60, 160 -30)", crs = "EPSG:4326")
+  pool <- wkpool::establish_topology(g)
+  expect_identical(wk::wk_crs(pool), "EPSG:4326")
+
+  target <- "+proj=laea +lon_0=147 +lat_0=-42"
+  out <- densify(pool, target)
+
+  ## crs (and geodesic) carried onto the refined pool
+  expect_identical(wk::wk_crs(out), "EPSG:4326")
+  expect_identical(wk::wk_is_geodesic(out), wk::wk_is_geodesic(pool))
+
+  ## pool-supplied source matches an explicit, equivalent source
+  out_explicit <- densify(pool, target, source = "EPSG:4326")
+  expect_identical(
+    wkpool::pool_vertices(out),
+    wkpool::pool_vertices(out_explicit)
+  )
+
+  ## and refinement actually happened
+  expect_gt(nrow(wkpool::pool_vertices(out)), nrow(wkpool::pool_vertices(pool)))
 })

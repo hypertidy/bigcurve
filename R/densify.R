@@ -33,9 +33,11 @@
 #'   are refused, as densification cannot invent them at new vertices
 #' @param target projection for which to densify (proj string, WKT,
 #'   authority code - anything PROJ accepts)
-#' @param source coordinate system of the input, default 'OGC:CRS84'
-#'   (longitude, latitude); authority codes are axis-normalized so
-#'   'EPSG:4326' input is still given as lon,lat
+#' @param source coordinate system of the input; if `NULL` (the
+#'   default) a `wkpool` input supplies its own crs (as carried by
+#'   wkpool >= 0.3.0.9000) and anything else is taken to be
+#'   'EPSG:4326'; authority codes are axis-normalized so 'EPSG:4326'
+#'   input is still given as lon,lat
 #' @param tolerance maximum allowed deviation, in units of `target`
 #'   (usually metres); if `NULL` (the default) it is derived from the
 #'   projected extent of the input as `min(diff(range))/pixels`
@@ -58,15 +60,18 @@
 #' d <- densify(s, "+proj=laea +lon_0=147 +lat_0=-42")
 #' nrow(d)
 #' plot(rproj_xy(d, "+proj=laea +lon_0=147 +lat_0=-42"), type = "l", asp = 1)
-densify <- function(x, target, source = "OGC:CRS84",
+densify <- function(x, target, source = NULL,
                     tolerance = NULL, pixels = 2048L, max_depth = 16L) {
   stopifnot(is.numeric(pixels), pixels >= 1, is.numeric(max_depth))
   max_depth <- as.integer(max_depth)
 
   if (inherits(x, "wkpool")) {
+    ## a pool can carry its own crs; resolved inside densify_wkpool()
     return(densify_wkpool(x, target, source = source, tolerance = tolerance,
                           pixels = pixels, max_depth = max_depth))
   }
+
+  source <- source %||% default_crs()
 
   if (is.matrix(x)) {
     tol <- tolerance %||% default_tolerance(x, target, source, pixels)
