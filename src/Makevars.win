@@ -1,0 +1,3 @@
+# Rtools (>= 42) ships PROJ and pkg-config in the toolchain
+PKG_CPPFLAGS = $(shell pkg-config --cflags proj)
+PKG_LIBS = $(shell pkg-config --libs --static proj)

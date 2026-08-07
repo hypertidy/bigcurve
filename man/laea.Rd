@@ -19,10 +19,11 @@ laea(lon_0 = 0, lat_0 = 0, x_0 = 0, y_0 = 0)
 character string, projection
 }
 \description{
-Projection string, in old bad PROJ format.
+Lambert azimuthal equal area projection string, in old-style PROJ format.
 }
 \details{
-Note that easting/northing is very bad names for false X and Y offsets, but that's what they are called in PROJ.
+Note that easting/northing are poor names for false X and Y offsets, but
+that is what they are called in PROJ.
 }
 \examples{
 laea()

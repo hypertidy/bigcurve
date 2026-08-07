@@ -5,85 +5,107 @@
 
 <!-- badges: start -->
 
-[![R-CMD-check](https://github.com/hypertidy/bigcurve/workflows/R-CMD-check/badge.svg)](https://github.com/hypertidy/bigcurve/actions)
+[![R-CMD-check](https://github.com/hypertidy/bigcurve/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/hypertidy/bigcurve/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-The goal of bigcurve is to adaptively densify lines. Like D3’s Flawed
-Example by Mike Bostock.
+The goal of bigcurve is to adaptively densify lines: insert vertices
+along great circle arcs exactly where a map projection bends them, and
+nowhere else. This is the adaptive resampling scheme of d3-geo by Mike
+Bostock, brought to R for paths and for segment meshes.
 
-
-
-TOO UNSTABLE TO USE ATM check back soon :)
-
-
-
-todo
-
-- [ ] speed up
-- [ ] consider remove terra
-- [x] remove geosphere
-- [ ] make helpers for various formats
-
-Get in touch if you’re interested! Post [an issue to
-discuss](https://github.com/hypertidy/bigcurve/issues) or ping me [on
-fedi](https://fosstodon.org/@mdsumner).
+The error is controlled in the plane of the target projection: straight
+chords drawn between output vertices stay within `tolerance` (in
+projected units) of the true projected curve. By default the tolerance
+is derived from the projected extent, “about one part in 2048 of the
+plot”.
 
 ## Installation
 
 You can install the development version of bigcurve like so:
 
 ``` r
-devtools::install_github("hypertidy/bigcurve")
+install.packages("bigcurve", repos = c("https://hypertidy.r-universe.dev", "https://cloud.r-project.org"))
 ```
+
+You will need the PROJ development library (`libproj-dev` on
+Debian/Ubuntu, `proj-devel` on Fedora, `proj` from Homebrew); Windows
+and recent Rtools have PROJ built in.
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem.
-
-What’s the point? We get *just enough* points to carry the curvature of
-our line from point A to point B (shown in the longlat map) over the
-shortest distance.
-
-The `dist` argument controls the minimum distance, but be aware this is
-very slow and flaky for now.
+We get *just enough* points to carry the curvature of a line from point
+A to point B (the shortest great circle distance) into a projection.
 
 ``` r
 library(bigcurve)
-s <- segment(c(140, -164), c(-89, 80))
-#crs <- laea(runif(1, -180, 180), runif(1, -90, 90))
-#crs <- "+proj=omerc +lon_0=147 +lonc = 180 +gamma=10 +lat_0=-42"
 crs <- "+proj=tmerc +lon_0=147 +lat_0=-42"
+s <- segment(c(140, -164), c(-89, 80))
+d <- densify(s, crs)
+dim(d)
+#> [1] 151   2
+
 op <- par(mfrow = c(2, 1), mar = rep(0.2, 4))
 m <- do.call(cbind, maps::map(plot = FALSE)[1:2])
-plot(s, type = "l");lines(m);axis(1);axis(2); text(s[[1]], lab = c("A", "B"), pos = 2)
-plot(ss <- bigcurve:::rproj_xy(bigcurve:::bisect(s, crs, dist = 3e4), crs), asp = 1)
-points(bigcurve:::rproj_xy(m, crs), pch = ".")
-axis(1);axis(2)
-points(ss)
-text(ss[c(1, nrow(ss)),], c("A", "B"), pos = 2)
+plot(d, type = "l"); lines(m); axis(1); axis(2)
+text(s, lab = c("A", "B"), pos = 2)
+plot(rproj_xy(d, crs), type = "l", asp = 1)
 ```
 
-<img src="man/figures/README-example-1.png" width="100%" />
+<img src="man/figures/README-example-1.png" alt="" width="100%" />
 
 ``` r
+plot(rproj_xy(d, crs), type = "p", asp = 1)
+
+points(rproj_xy(m, crs), pch = ".")
+axis(1); axis(2)
 par(op)
 ```
 
-If we take that same path (A to B, shortest distance) in a different
-projection we get the *same path* but at different locations, because
-the curvature is a different situation here.
+<img src="man/figures/README-example-2.png" alt="" width="100%" />
+
+The same path in a different projection is the *same path*, densified
+differently, because the curvature is a different situation there.
 
 ``` r
 crs2 <- "+proj=stere +lon_0=180 +lat_0=20"
-plot(ss <-bigcurve:::rproj_xy(bigcurve:::bisect(s, crs2, dist = 3e4), crs2), asp = 1)
-
-points(bigcurve:::rproj_xy( m, crs), pch = ".")
-axis(1);axis(2)
-points(ss)
-text(ss[c(1, nrow(ss)), ], c("A", "B"), pos = 2)
+d2 <- densify(s, crs2)
+plot(rproj_xy(d2, crs2), type = "l", asp = 1)
+points(rproj_xy(m, crs2), pch = ".")
 ```
 
-<img src="man/figures/README-different-1.png" width="100%" />
+<img src="man/figures/README-different-1.png" alt="" width="100%" />
+
+## Graticules
+
+`densify()` also works on segment meshes (rgl mesh3d style, `vb`
+vertices and `is` segment indices), so a whole graticule refines in one
+call. `textures::segs()` builds one and textures provides the 2D mesh
+plot.
+
+``` r
+library(textures)
+prj <- "+proj=laea +lat_0=-60"
+mesh <- segs(c(40, 20), extent = c(-180, 180, -65, 65))
+out <- densify(mesh, prj)
+c(input = ncol(mesh$vb), output = ncol(out$vb))
+#>  input output 
+#>    861   2065
+
+## project the refined mesh for display
+out$vb[1:2, ] <- t(rproj_xy(t(out$vb[1:2, , drop = FALSE]), prj))
+plot(out, asp = 1)
+points(t(out$vb[1:2, ]))
+```
+
+<img src="man/figures/README-graticule-1.png" alt="" width="100%" />
+
+## Notes
+
+Output coordinates are in the source coordinate system (geographic by
+default); project them for plotting, as above. Points that cannot be
+projected (beyond the horizon of an orthographic projection, say) never
+error: their segments are simply left alone, clipping is a job for
+another package.
 
 The proper source of goodness is here:
 

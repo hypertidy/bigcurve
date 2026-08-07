@@ -6,7 +6,7 @@
 \alias{bigcurve-package}
 \title{bigcurve: Adaptive Densifying of Lines}
 \description{
-Densify lines adaptively, as required by curvature.
+Densify lines adaptively, as required by the curvature a map projection imposes on them. Vertices are inserted along great circle arcs only where the projected curve deviates from a straight chord by more than a tolerance, following the adaptive resampling scheme of 'd3-geo' by Mike Bostock.
 }
 \seealso{
 Useful links:
@@ -19,9 +19,14 @@ Useful links:
 \author{
 \strong{Maintainer}: Michael D. Sumner \email{mdsumner@gmail.com}
 
+Authors:
+\itemize{
+  \item Michael D. Sumner \email{mdsumner@gmail.com}
+}
+
 Other contributors:
 \itemize{
-  \item Simon Wotherspoon (wrote SGAT::trackMdpts adapted here for midpt) [contributor]
+  \item Simon Wotherspoon (wrote SGAT::trackMdpts, the ancestor of the spherical midpoint used here) [contributor]
 }
 
 }

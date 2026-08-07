@@ -4,20 +4,18 @@
 \alias{segment}
 \title{Segment}
 \usage{
-segment(x = runif(2L, -180, 180), y = runif(2L, -90, 90), crs = default_crs())
+segment(x = runif(2L, -180, 180), y = runif(2L, -90, 90))
 }
 \arguments{
 \item{x}{longitude (2, start point, end point)}
 
 \item{y}{latitude (2, same as x)}
-
-\item{crs}{angular projection to use, longlat defaults to 'OGC:CRS84'}
 }
 \value{
-matrix
+two-column matrix
 }
 \description{
-Segment
+A two-point path as a two-column matrix, by default a random one.
 }
 \examples{
 segment()

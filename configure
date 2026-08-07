@@ -1,0 +1,77 @@
+#!/bin/sh
+# configure for bigcurve: find system PROJ (>= 8.0)
+#
+# Precedence:
+#   1. PROJ_INCLUDE_PATH / PROJ_LIB_PATH environment variables
+#   2. pkg-config proj
+#   3. bare -lproj on the default search path
+#
+# Anticonf-style: no autoconf, just probe and write src/Makevars.
+
+PKG_CONFIG_NAME="proj"
+PKG_DEB_NAME="libproj-dev"
+PKG_RPM_NAME="proj-devel"
+PKG_BREW_NAME="proj"
+PKG_TEST_HEADER="<proj.h>"
+
+PKG_LIBS="-lproj"
+PKG_CFLAGS=""
+
+if [ -n "$PROJ_INCLUDE_PATH" ] || [ -n "$PROJ_LIB_PATH" ]; then
+  echo "Using PROJ_INCLUDE_PATH/PROJ_LIB_PATH from environment"
+  [ -n "$PROJ_INCLUDE_PATH" ] && PKG_CFLAGS="-I$PROJ_INCLUDE_PATH"
+  [ -n "$PROJ_LIB_PATH" ] && PKG_LIBS="-L$PROJ_LIB_PATH -lproj"
+else
+  pkg-config --version >/dev/null 2>&1
+  if [ $? -eq 0 ]; then
+    PKGCONFIG_CFLAGS=`pkg-config --cflags ${PKG_CONFIG_NAME} 2>/dev/null`
+    PKGCONFIG_LIBS=`pkg-config --libs ${PKG_CONFIG_NAME} 2>/dev/null`
+    if [ -n "$PKGCONFIG_LIBS" ]; then
+      echo "Found pkg-config cflags and libs for ${PKG_CONFIG_NAME}"
+      PKG_CFLAGS="$PKGCONFIG_CFLAGS"
+      PKG_LIBS="$PKGCONFIG_LIBS"
+    fi
+  fi
+fi
+
+# test compile+link against proj.h, requiring the >= 8.0 API we use
+: ${R_HOME=`R RHOME`}
+CC=`"${R_HOME}/bin/R" CMD config CC`
+CFLAGS=`"${R_HOME}/bin/R" CMD config CFLAGS`
+
+cat > conftest.c << _EOF
+#include ${PKG_TEST_HEADER}
+#if PROJ_VERSION_MAJOR < 8
+#error "PROJ >= 8.0 is required (proj_context_errno_string)"
+#endif
+int main(void) {
+  PJ_CONTEXT* ctx = PJ_DEFAULT_CTX;
+  (void)proj_context_errno_string(ctx, 0);
+  return 0;
+}
+_EOF
+
+${CC} ${CFLAGS} ${PKG_CFLAGS} conftest.c ${PKG_LIBS} -o conftest >/dev/null 2>conftest.err
+if [ $? -ne 0 ]; then
+  echo "-----------------------------[ ANTICONF ]-----------------------------"
+  echo "Configuration failed to find PROJ (>= 8.0). Try installing:"
+  echo "  deb:  ${PKG_DEB_NAME} (Debian, Ubuntu)"
+  echo "  rpm:  ${PKG_RPM_NAME} (Fedora, EPEL)"
+  echo "  brew: ${PKG_BREW_NAME} (OSX)"
+  echo "If PROJ is installed in a non-standard location, set"
+  echo "PROJ_INCLUDE_PATH and PROJ_LIB_PATH, or add its .pc directory to"
+  echo "PKG_CONFIG_PATH. Compiler output:"
+  echo "----------------------------------------------------------------------"
+  cat conftest.err
+  rm -f conftest conftest.c conftest.err
+  exit 1
+fi
+rm -f conftest conftest.c conftest.err
+
+echo "PKG_CFLAGS=$PKG_CFLAGS"
+echo "PKG_LIBS=$PKG_LIBS"
+
+sed -e "s|@cflags@|$PKG_CFLAGS|" -e "s|@libs@|$PKG_LIBS|" \
+  src/Makevars.in > src/Makevars
+
+exit 0

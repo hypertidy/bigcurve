@@ -1,24 +1,28 @@
 Package: bigcurve
 Title: Adaptive Densifying of Lines
-Version: 0.0.1
-Authors@R: 
-    c(person("Michael D.", "Sumner", , "mdsumner@gmail.com", role = c("aut", "cre")), 
-      person("Simon", "Wotherspoon", role = "ctb",  comment = "wrote SGAT::trackMdpts adapted here for midpt"))
-Description: Densify lines adaptively, as required by curvature.
+Version: 0.1.0
+Authors@R:
+    c(person("Michael D.", "Sumner", , "mdsumner@gmail.com", role = c("aut", "cre")),
+      person("Simon", "Wotherspoon", role = "ctb",  comment = "wrote SGAT::trackMdpts, the ancestor of the spherical midpoint used here"))
+Description: Densify lines adaptively, as required by the curvature a map
+    projection imposes on them. Vertices are inserted along great circle
+    arcs only where the projected curve deviates from a straight chord by
+    more than a tolerance, following the adaptive resampling scheme of
+    'd3-geo' by Mike Bostock.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
-Imports: 
-    glue,
-    libproj,
-    terra
+Imports:
+    glue
 URL: https://github.com/hypertidy/bigcurve
 BugReports: https://github.com/hypertidy/bigcurve/issues
-Suggests: 
-    testthat (>= 3.0.0)
+Suggests:
+    maps,
+    testthat (>= 3.0.0),
+    textures
 Config/testthat/edition: 3
-LinkingTo: 
-    cpp11,
-    libproj
-SystemRequirements: C++11
+LinkingTo:
+    cpp11
+SystemRequirements: PROJ (>= 8.0.0): libproj-dev (deb), proj-devel (rpm),
+    proj (brew)
+Config/roxygen2/version: 8.0.0
