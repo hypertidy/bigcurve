@@ -23,7 +23,7 @@ Suggests:
     textures,
     vctrs,
     wk,
-    wkpool
+    wkpool (> 0.3.0)
 Config/testthat/edition: 3
 LinkingTo:
     cpp11
