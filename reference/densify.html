@@ -21,7 +21,7 @@ segment meshes."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bigcurve</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0.9000</span>
       </span>
     </div>
 
@@ -64,7 +64,7 @@ segment meshes.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">densify</span><span class="op">(</span></span>
 <span>  <span class="va">x</span>,</span>
 <span>  <span class="va">target</span>,</span>
-<span>  source <span class="op">=</span> <span class="st">"OGC:CRS84"</span>,</span>
+<span>  source <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tolerance <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  pixels <span class="op">=</span> <span class="fl">2048L</span>,</span>
 <span>  max_depth <span class="op">=</span> <span class="fl">16L</span></span>
@@ -91,9 +91,11 @@ authority code - anything PROJ accepts)</p></dd>
 
 
 <dt id="arg-source">source<a class="anchor" aria-label="anchor" href="#arg-source"></a></dt>
-<dd><p>coordinate system of the input, default 'OGC:CRS84'
-(longitude, latitude); authority codes are axis-normalized so
-'EPSG:4326' input is still given as lon,lat</p></dd>
+<dd><p>coordinate system of the input; if <code>NULL</code> (the
+default) a <code>wkpool</code> input supplies its own crs (as carried by
+wkpool &gt;= 0.3.0.9000) and anything else is taken to be
+'EPSG:4326'; authority codes are axis-normalized so 'EPSG:4326'
+input is still given as lon,lat</p></dd>
 
 
 <dt id="arg-tolerance">tolerance<a class="anchor" aria-label="anchor" href="#arg-tolerance"></a></dt>

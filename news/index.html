@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bigcurve</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0.9000</span>
       </span>
     </div>
 
@@ -47,6 +47,12 @@
       <small>Source: <a href="https://github.com/hypertidy/bigcurve/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="page-header" data-toc-text="development version" id="bigcurve-development-version">bigcurve (development version)<a class="anchor" aria-label="anchor" href="#bigcurve-development-version"></a></h2>
+<ul><li><p>The default input coordinate system is now ‘EPSG:4326’ rather than ‘OGC:CRS84’ throughout (<code><a href="../reference/densify.html">densify()</a></code>, <code><a href="../reference/rproj_xy.html">rproj_xy()</a></code>). Authority codes are axis-normalized on the way into PROJ, so input remains lon,lat either way; ‘EPSG:4326’ is simply the more familiar name.</p></li>
+<li><p><code><a href="../reference/densify.html">densify()</a></code> gains crs awareness for wkpool input: <code>source</code> now defaults to <code>NULL</code>, and a pool built with wkpool &gt;= 0.3.0.9000 supplies its own crs (as captured from the original geometry by <code><a href="https://rdrr.io/pkg/wkpool/man/establish_topology.html" class="external-link">wkpool::establish_topology()</a></code>). An explicit <code>source</code> still wins, and inputs with no crs fall back to ‘EPSG:4326’.</p></li>
+<li><p>The refined pool returned by <code><a href="../reference/densify.html">densify()</a></code> now carries the input pool’s crs and geodesic attributes, built through the exported <code>wkpool::new_wkpool()</code> constructor when available.</p></li>
+</ul></div>
     <div class="section level2">
 <h2 class="page-header" data-toc-text="0.5.0" id="bigcurve-050">bigcurve 0.5.0<a class="anchor" aria-label="anchor" href="#bigcurve-050"></a></h2>
 <ul><li><p><code><a href="../reference/densify.html">densify()</a></code> now accepts wkpool objects (hypertidy/wkpool &gt;= 0.3.0): any wk-handleable geometry decomposed with <code><a href="https://rdrr.io/pkg/wkpool/man/establish_topology.html" class="external-link">wkpool::establish_topology()</a></code> can be densified directly, returning a wkpool with vertices appended (freshly minted <code>.vx</code> ids), directed segments refined in place, and <code>.feature</code> provenance carried onto every refined segment.</p></li>
