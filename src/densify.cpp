@@ -105,8 +105,11 @@ list densify_path_cpp(doubles lon, doubles lat,
 }
 
 // Densify a segment mesh: vertices (x, y) and 0-based edge index pairs
-// (s0, s1). Returns list(x, y, s0, s1) with new vertices appended and each
-// input edge replaced by its refined chain (0-based indices).
+// (s0, s1). Returns list(x, y, s0, s1, parent) with new vertices appended,
+// each input edge replaced by its refined chain (0-based indices), and
+// parent giving the 0-based input edge each output edge descends from --
+// the hook for carrying per-segment attributes (feature, ring, arc)
+// through refinement.
 [[cpp11::register]]
 list densify_mesh_cpp(doubles x, doubles y,
                       integers s0, integers s1,
@@ -123,9 +126,10 @@ list densify_mesh_cpp(doubles x, doubles y,
 
   std::vector<double> vx(x.begin(), x.end());
   std::vector<double> vy(y.begin(), y.end());
-  std::vector<int> e0, e1;
+  std::vector<int> e0, e1, parent;
   e0.reserve((size_t)s0.size() * 2);
   e1.reserve((size_t)s0.size() * 2);
+  parent.reserve((size_t)s0.size() * 2);
   std::vector<bigcurve::Vertex> interior;
 
   for (R_xlen_t k = 0; k < s0.size(); k++) {
@@ -143,14 +147,17 @@ list densify_mesh_cpp(doubles x, doubles y,
       int idx = (int)vx.size() - 1;
       e0.push_back(prev);
       e1.push_back(idx);
+      parent.push_back((int)k);
       prev = idx;
     }
     e0.push_back(prev);
     e1.push_back(b);
+    parent.push_back((int)k);
   }
 
   writable::list out({to_doubles(vx), to_doubles(vy),
-                      to_integers(e0), to_integers(e1)});
-  out.names() = {"x", "y", "s0", "s1"};
+                      to_integers(e0), to_integers(e1),
+                      to_integers(parent)});
+  out.names() = {"x", "y", "s0", "s1", "parent"};
   return out;
 }

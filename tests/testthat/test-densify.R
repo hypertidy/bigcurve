@@ -88,3 +88,66 @@ test_that("a textures::segs graticule refines in one call", {
   ## and the result is still plottable as the same class
   expect_s3_class(out, class(mesh))
 })
+
+test_that("parent maps every refined edge to its input edge", {
+  ## engine-level contract used by the wkpool bridge
+  x <- c(140, -164, -89)
+  y <- c(-89, 80, 80)
+  out <- densify_mesh_cpp(x, y, c(0L, 1L), c(1L, 2L),
+                          "OGC:CRS84", "+proj=laea +lon_0=147 +lat_0=-42",
+                          1e4, 16L)
+  expect_length(out$parent, length(out$s0))
+  expect_true(all(out$parent %in% c(0L, 1L)))
+  ## chains are contiguous per parent, in input order
+  expect_true(!is.unsorted(out$parent))
+  ## each chain starts and ends at its input edge's endpoints
+  expect_identical(out$s0[match(0L, out$parent)], 0L)
+  expect_identical(out$s1[max(which(out$parent == 0L))], 1L)
+  expect_identical(out$s0[match(1L, out$parent)], 1L)
+  expect_identical(out$s1[max(which(out$parent == 1L))], 2L)
+})
+
+test_that("wkpool round trip: refine, preserve identity, carry features", {
+  skip_if_not_installed("wkpool")
+  skip_if_not_installed("wk")
+  ## two big adjacent polygons sharing the meridian at lon 80
+  g <- wk::as_wkb(c(
+    "POLYGON ((0 0, 80 0, 80 60, 0 60, 0 0))",
+    "POLYGON ((80 0, 160 0, 160 60, 80 60, 80 0))"
+  ))
+  pool <- wkpool::establish_topology(g)
+  crs <- "+proj=laea +lon_0=80 +lat_0=30"
+  out <- densify(pool, crs, tolerance = 5e4)
+
+  expect_s3_class(out, "wkpool")
+  ## refinement happened
+  expect_gt(length(out), length(pool))
+  v0 <- wkpool::pool_vertices(pool)
+  v1 <- wkpool::pool_vertices(out)
+  expect_gt(nrow(v1), nrow(v0))
+  ## original vertices first, ids and coordinates untouched
+  expect_equal(v1[seq_len(nrow(v0)), ], v0)
+  ## minted ids are new
+  expect_true(all(v1$.vx[-seq_len(nrow(v0))] > max(v0$.vx)))
+  ## every segment references a pooled vertex
+  s1 <- wkpool::pool_segments(out)
+  expect_true(all(s1$.vx0 %in% v1$.vx))
+  expect_true(all(s1$.vx1 %in% v1$.vx))
+  ## feature provenance carried, both features refined
+  expect_setequal(unique(wkpool::pool_feature(out)),
+                  unique(wkpool::pool_feature(pool)))
+  ## added vertices are degree-2: node structure is unchanged
+  merged0 <- wkpool::merge_coincident(pool)
+  merged1 <- wkpool::merge_coincident(out)
+  expect_identical(length(wkpool::find_nodes(merged1)),
+                   length(wkpool::find_nodes(merged0)))
+})
+
+test_that("wkpool with z vertices is refused, not mangled", {
+  skip_if_not_installed("wkpool")
+  skip_if_not_installed("wk")
+  g <- wk::as_wkb("LINESTRING Z (0 0 1, 80 60 2)")
+  pool <- wkpool::establish_topology(g)
+  skip_if(!"z" %in% names(wkpool::pool_vertices(pool)))
+  expect_error(densify(pool, "+proj=laea +lon_0=40"), "strictly 2D")
+})

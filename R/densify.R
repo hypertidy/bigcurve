@@ -25,9 +25,12 @@
 #' is out of scope here.
 #'
 #' @param x a two-column matrix of lon,lat (a path), a list of such
-#'   matrices, or a segment mesh: a list with `vb` (4 x n vertex matrix,
-#'   rows x, y, z, h) and `is` (2 x m segment index matrix, 1-based), as
-#'   used by rgl's mesh3d
+#'   matrices, a segment mesh (a list with `vb`, a 4 x n vertex matrix
+#'   with rows x, y, z, h, and `is`, a 2 x m segment index matrix,
+#'   1-based, as used by rgl's mesh3d), or a `wkpool` vertex-pool
+#'   topology from the wkpool package (any wk-handleable geometry via
+#'   `wkpool::establish_topology()`); pools carrying z or m vertex values
+#'   are refused, as densification cannot invent them at new vertices
 #' @param target projection for which to densify (proj string, WKT,
 #'   authority code - anything PROJ accepts)
 #' @param source coordinate system of the input, default 'OGC:CRS84'
@@ -44,7 +47,9 @@
 #'
 #' @return the same kind of object as `x`, with vertices added: a matrix
 #'   for a path, a list of matrices for a list, a mesh with appended
-#'   vertices and refined `is` for a mesh
+#'   vertices and refined `is` for a mesh, a `wkpool` with appended
+#'   vertices (freshly minted `.vx` ids), refined directed segments, and
+#'   `.feature` provenance carried onto every refined segment
 #' @export
 #'
 #' @references <https://bost.ocks.org/mike/example/>
@@ -57,6 +62,11 @@ densify <- function(x, target, source = "OGC:CRS84",
                     tolerance = NULL, pixels = 2048L, max_depth = 16L) {
   stopifnot(is.numeric(pixels), pixels >= 1, is.numeric(max_depth))
   max_depth <- as.integer(max_depth)
+
+  if (inherits(x, "wkpool")) {
+    return(densify_wkpool(x, target, source = source, tolerance = tolerance,
+                          pixels = pixels, max_depth = max_depth))
+  }
 
   if (is.matrix(x)) {
     tol <- tolerance %||% default_tolerance(x, target, source, pixels)
@@ -84,7 +94,7 @@ densify <- function(x, target, source = "OGC:CRS84",
                   tolerance = tol, pixels = pixels, max_depth = max_depth))
   }
 
-  stop("'x' must be a matrix, a list of matrices, or a segment mesh (vb/is)")
+  stop("'x' must be a matrix, a list of matrices, a segment mesh (vb/is), or a wkpool")
 }
 
 ## default tolerance: one part in 'pixels' of the smaller side of the

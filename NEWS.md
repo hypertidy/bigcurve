@@ -1,3 +1,27 @@
+# bigcurve 0.5.0
+
+* `densify()` now accepts wkpool objects (hypertidy/wkpool >= 0.3.0):
+  any wk-handleable geometry decomposed with
+  `wkpool::establish_topology()` can be densified directly, returning a
+  wkpool with vertices appended (freshly minted `.vx` ids), directed
+  segments refined in place, and `.feature` provenance carried onto
+  every refined segment.
+
+* Added vertices are degree-2 by construction, so densification does
+  not alter the arc-node structure of a pool: `find_nodes()` before and
+  after refinement is identical.
+
+* The mesh engine now reports `parent`, the input segment each refined
+  segment descends from. This is the hook that carries per-segment
+  attributes (feature, ring, arc membership) through refinement.
+
+* Pools carrying z or m vertex values are refused with an error:
+  densification is strictly 2D and will not invent values at inserted
+  vertices. Rebuild the pool from xy geometry to proceed.
+
+* Added wkpool, wk, and vctrs to Suggests.
+
+
 # bigcurve 0.1.0
 
 Complete rework of the package around a new adaptive resampling engine,

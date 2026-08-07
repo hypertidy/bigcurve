@@ -94,6 +94,21 @@ plot(out, asp = 1)
 points(t(out$vb[1:2, ]))
 ```
 
+Convert an input polygon dataset, compare with and without adaptive densification. 
+
+```{r adaptive-wkpool}
+p <- geos::as_geos_geometry(terra::as.polygons(terra::rast(terra::ext(-150, 150, -85, 85), res = 15)))
+
+tgt <- "+proj=laea"
+tr <- PROJ::proj_trans_create(wk::wk_crs(p)$wkt, tgt)
+
+plot(wk::wk_transform(p, tr))
+x <- wk::wk_transform(wkpool::segments_to_wkb(bigcurve::densify(wkpool::establish_topology(p), tgt, source = wk::wk_crs(p)$wkt)), tr)
+plot(x)
+points(wk::wk_coords(x)[, c("x", "y"), drop = FALSE], pch = 19, cex = .5)
+
+```
+
 ## Notes
 
 Output coordinates are in the source coordinate system (geographic by

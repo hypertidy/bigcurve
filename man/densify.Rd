@@ -15,9 +15,12 @@ densify(
 }
 \arguments{
 \item{x}{a two-column matrix of lon,lat (a path), a list of such
-matrices, or a segment mesh: a list with \code{vb} (4 x n vertex matrix,
-rows x, y, z, h) and \code{is} (2 x m segment index matrix, 1-based), as
-used by rgl's mesh3d}
+matrices, a segment mesh (a list with \code{vb}, a 4 x n vertex matrix
+with rows x, y, z, h, and \code{is}, a 2 x m segment index matrix,
+1-based, as used by rgl's mesh3d), or a \code{wkpool} vertex-pool
+topology from the wkpool package (any wk-handleable geometry via
+\code{wkpool::establish_topology()}); pools carrying z or m vertex values
+are refused, as densification cannot invent them at new vertices}
 
 \item{target}{projection for which to densify (proj string, WKT,
 authority code - anything PROJ accepts)}
@@ -40,7 +43,9 @@ at most doubles the vertex count of a segment)}
 \value{
 the same kind of object as \code{x}, with vertices added: a matrix
 for a path, a list of matrices for a list, a mesh with appended
-vertices and refined \code{is} for a mesh
+vertices and refined \code{is} for a mesh, a \code{wkpool} with appended
+vertices (freshly minted \code{.vx} ids), refined directed segments, and
+\code{.feature} provenance carried onto every refined segment
 }
 \description{
 Insert vertices along great circle arcs exactly where a target projection

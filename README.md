@@ -99,6 +99,28 @@ points(t(out$vb[1:2, ]))
 
 <img src="man/figures/README-graticule-1.png" alt="" width="100%" />
 
+Convert an input polygon dataset, compare with and without adaptive
+densification.
+
+``` r
+p <- geos::as_geos_geometry(terra::as.polygons(terra::rast(terra::ext(-150, 150, -85, 85), res = 15)))
+
+tgt <- "+proj=laea"
+tr <- PROJ::proj_trans_create(wk::wk_crs(p)$wkt, tgt)
+
+plot(wk::wk_transform(p, tr))
+```
+
+<img src="man/figures/README-adaptive-wkpool-1.png" alt="" width="100%" />
+
+``` r
+x <- wk::wk_transform(wkpool::segments_to_wkb(bigcurve::densify(wkpool::establish_topology(p), tgt, source = wk::wk_crs(p)$wkt)), tr)
+plot(x)
+points(wk::wk_coords(x)[, c("x", "y"), drop = FALSE], pch = 19, cex = .5)
+```
+
+<img src="man/figures/README-adaptive-wkpool-2.png" alt="" width="100%" />
+
 ## Notes
 
 Output coordinates are in the source coordinate system (geographic by
