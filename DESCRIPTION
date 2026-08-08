@@ -1,6 +1,6 @@
 Package: bigcurve
 Title: Adaptive Densifying of Lines
-Version: 0.5.0.9000
+Version: 0.5.0.9001
 Authors@R:
     c(person("Michael D.", "Sumner", , "mdsumner@gmail.com", role = c("aut", "cre")),
       person("Simon", "Wotherspoon", role = "ctb",  comment = "wrote SGAT::trackMdpts, the ancestor of the spherical midpoint used here"))
@@ -23,10 +23,11 @@ Suggests:
     textures,
     vctrs,
     wk,
-    wkpool (> 0.3.0)
+    wkpool (>= 0.3.0.9005)
 Config/testthat/edition: 3
 LinkingTo:
     cpp11
 SystemRequirements: PROJ (>= 8.0.0): libproj-dev (deb), proj-devel (rpm),
     proj (brew)
 Config/roxygen2/version: 8.0.0
+Remotes: hypertidy/wkpool
