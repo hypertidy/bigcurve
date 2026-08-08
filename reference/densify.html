@@ -64,7 +64,7 @@ segment meshes.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">densify</span><span class="op">(</span></span>
 <span>  <span class="va">x</span>,</span>
 <span>  <span class="va">target</span>,</span>
-<span>  source <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  source <span class="op">=</span> <span class="st">"OGC:CRS84"</span>,</span>
 <span>  tolerance <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  pixels <span class="op">=</span> <span class="fl">2048L</span>,</span>
 <span>  max_depth <span class="op">=</span> <span class="fl">16L</span></span>
@@ -91,11 +91,9 @@ authority code - anything PROJ accepts)</p></dd>
 
 
 <dt id="arg-source">source<a class="anchor" aria-label="anchor" href="#arg-source"></a></dt>
-<dd><p>coordinate system of the input; if <code>NULL</code> (the
-default) a <code>wkpool</code> input supplies its own crs (as carried by
-wkpool &gt;= 0.3.0.9000) and anything else is taken to be
-'EPSG:4326'; authority codes are axis-normalized so 'EPSG:4326'
-input is still given as lon,lat</p></dd>
+<dd><p>coordinate system of the input, default 'OGC:CRS84'
+(longitude, latitude); authority codes are axis-normalized so
+'EPSG:4326' input is still given as lon,lat</p></dd>
 
 
 <dt id="arg-tolerance">tolerance<a class="anchor" aria-label="anchor" href="#arg-tolerance"></a></dt>
@@ -138,6 +136,19 @@ default): project the result yourself for plotting, e.g. with
 orthographic projection) do not error: segments touching them are left
 un-densified, and refinement stops at unprojectable midpoints. Clipping
 is out of scope here.</p>
+<p>Inserted vertices are emitted in the longitude frame of their input
+edge: an edge along longitude 180 refines at 180, its mirror at -180
+refines at -180 (the two seams of a global layer remain distinct), and
+an edge written as crossing the antimeridian yields a locally
+continuous chain, possibly outside <code>[-180, 180)</code>. Input vertices are
+always returned with their written values, so a crossing edge's path
+carries one numeric 360-degree step at its far endpoint (the same
+point on the sphere; PROJ is indifferent). Longitudes are never
+canonicalized; normalize afterwards if a canonical range is needed.
+Edges that cross the <em>target</em> projection's own discontinuity (which
+depends on <code>lon_0</code>) cannot form a valid planar chain and should be cut
+beforehand; refinement of such edges is bounded, not exploded, because
+arcs spanning less ground than <code>tolerance</code> are never split.</p>
     </div>
     <div id="references">
     <h2>References</h2>
