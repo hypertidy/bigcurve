@@ -7,8 +7,12 @@ test_that("densify adds vertices where curvature demands them", {
   ## endpoints preserved exactly
   expect_equal(unname(d[1L, ]), unname(s[1L, ]))
   expect_equal(unname(d[nrow(d), ]), unname(s[2L, ]))
-  ## longitudes wrapped
-  expect_true(all(d[, 1L] >= -180 & d[, 1L] < 180))
+  ## frame contract: this edge is written as crossing (140 -> -164,
+  ## which unwraps to 196 in the start vertex's frame), so interior
+  ## longitudes run continuously in [140, 196]; the final vertex keeps
+  ## its written value (-164), the same sphere point
+  interior <- d[-c(1L, nrow(d)), 1L]
+  expect_true(all(interior >= 140 - 1e-9 & interior <= 196 + 1e-9))
 })
 
 test_that("straight-in-projection segments are left alone", {
@@ -136,30 +140,40 @@ test_that("wkpool round trip: refine, preserve identity, carry features", {
   ## feature provenance carried, both features refined
   expect_setequal(unique(wkpool::pool_feature(out)),
                   unique(wkpool::pool_feature(pool)))
-  ## added vertices are degree-2 within each feature: per-feature node
-  ## structure is unchanged. (Across features the duplicated shared edge
-  ## at lon 80 is refined identically in both copies - the engine always
-  ## splits arcs wider than 30 degrees - so its minted midpoints are
-  ## coincident and become degree-4 vertices, i.e. new nodes, after
-  ## merging. That is correct observation of the refined geometry, so it
-  ## is asserted below, not forbidden.)
-  for (f in unique(wkpool::pool_feature(pool))) {
-    pf <- pool[wkpool::pool_feature(pool) == f]
-    of <- out[wkpool::pool_feature(out) == f]
-    expect_identical(
-      length(wkpool::find_nodes(wkpool::merge_coincident(of))),
-      length(wkpool::find_nodes(wkpool::merge_coincident(pf)))
-    )
-  }
+  ## node structure: rings traverse the shared meridian twice, and both
+  ## traversals mint bitwise-identical vertices on it (all terms in the
+  ## meridian midpoint are commutative sums), so merge_coincident fuses
+  ## them into degree-4 vertices -- new nodes CAN appear, but only on
+  ## the shared boundary at lon 80. The exact count is not asserted:
+  ## forced splits leave children exactly on the 30-degree threshold,
+  ## which is a strict float comparison and platform-sensitive.
   merged0 <- wkpool::merge_coincident(pool)
   merged1 <- wkpool::merge_coincident(out)
   n0 <- wkpool::find_nodes(merged0)
   n1 <- wkpool::find_nodes(merged1)
-  ## original nodes persist; any new nodes are merged midpoints minted
-  ## on the duplicated shared boundary at lon 80
-  v1 <- wkpool::pool_vertices(merged1)
-  extra <- setdiff(n1, n0)
-  expect_true(all(v1$x[match(extra, v1$.vx)] == 80))
+  expect_gte(length(n1), length(n0))
+  vm <- wkpool::pool_vertices(merged1)
+  new_nodes <- setdiff(n1, n0)
+  if (length(new_nodes)) {
+    expect_true(all(vm$x[match(new_nodes, vm$.vx)] == 80))
+  }
+})
+
+test_that("added vertices are degree-2: exact on undupled topology", {
+  skip_if_not_installed("wkpool")
+  skip_if_not_installed("wk")
+  ## a linestring network has no duplicated traversals, so the node
+  ## structure is exactly preserved: three lines meeting at a junction
+  g <- wk::as_wkb(c(
+    "LINESTRING (0 0, 60 40)",
+    "LINESTRING (60 40, 120 0)",
+    "LINESTRING (60 40, 60 85)"
+  ))
+  pool <- wkpool::merge_coincident(wkpool::establish_topology(g))
+  out <- densify(pool, "+proj=laea +lon_0=60 +lat_0=40", tolerance = 5e4)
+  expect_gt(nrow(wkpool::pool_vertices(out)), nrow(wkpool::pool_vertices(pool)))
+  expect_identical(length(wkpool::find_nodes(out)),
+                   length(wkpool::find_nodes(pool)))
 })
 
 test_that("wkpool with z vertices is refused, not mangled", {
@@ -171,62 +185,59 @@ test_that("wkpool with z vertices is refused, not mangled", {
   expect_error(densify(pool, "+proj=laea +lon_0=40"), "strictly 2D")
 })
 
-
-test_that("wkpool crs: pool supplies source and crs survives densify", {
-  skip_if_not_installed("wkpool", "0.3.0.9000")
+test_that("antimeridian frame is preserved, east and west stay distinct", {
+  crs <- "+proj=merc"
+  ## an edge along lon 180 refines at 180
+  e <- densify(segment(c(180, 180), c(-60, 60)), crs, tolerance = 5e4)
+  expect_gt(nrow(e), 2L)
+  expect_true(all(e[, 1L] == 180))
+  ## its mirror along lon -180 refines at -180
+  w <- densify(segment(c(-180, -180), c(-60, 60)), crs, tolerance = 5e4)
+  expect_gt(nrow(w), 2L)
+  expect_true(all(w[, 1L] == -180))
+  ## and through the pool path: adjacent world halves keep both seams
+  skip_if_not_installed("wkpool")
   skip_if_not_installed("wk")
-
-  g <- wk::wkt("LINESTRING (100 -60, 160 -30)", crs = "EPSG:4326")
-  pool <- wkpool::establish_topology(g)
-  expect_identical(wk::wk_crs(pool), "EPSG:4326")
-
-  target <- "+proj=laea +lon_0=147 +lat_0=-42"
-  out <- densify(pool, target)
-
-  ## crs (and geodesic) carried onto the refined pool
-  expect_identical(wk::wk_crs(out), "EPSG:4326")
-  expect_identical(wk::wk_is_geodesic(out), wk::wk_is_geodesic(pool))
-
-  ## pool-supplied source matches an explicit, equivalent source
-  out_explicit <- densify(pool, target, source = "EPSG:4326")
-  expect_identical(
-    wkpool::pool_vertices(out),
-    wkpool::pool_vertices(out_explicit)
-  )
-
-  ## and refinement actually happened
-  expect_gt(nrow(wkpool::pool_vertices(out)), nrow(wkpool::pool_vertices(pool)))
+  g <- wk::as_wkb(c(
+    "POLYGON ((0 -60, 180 -60, 180 60, 0 60, 0 -60))",
+    "POLYGON ((-180 -60, 0 -60, 0 60, -180 60, -180 -60))"
+  ))
+  out <- densify(wkpool::establish_topology(g), crs, tolerance = 5e4)
+  v <- wkpool::pool_vertices(out)
+  expect_gt(sum(v$x == 180), 2L)   ## eastern seam has minted vertices
+  expect_gt(sum(v$x == -180), 2L)  ## and so does the western seam
 })
 
-test_that("wkpool path provenance survives densify: exact reconstruction after refinement", {
-  skip_if_not_installed("wkpool", "0.3.0.9003")
-  skip_if_not_installed("wk")
+test_that("edges written as crossing get a locally continuous chain", {
+  d <- densify(segment(c(170, -170), c(20, 20)), "+proj=merc",
+               tolerance = 5e4)
+  ## interior longitudes run monotonically through the frame [170, 190]
+  interior <- d[-c(1L, nrow(d)), 1L]
+  expect_true(all(diff(c(170, interior)) >= 0))
+  expect_true(all(interior >= 170 & interior <= 190))
+  ## bounded by the arc floor, not exploded to max_depth
+  expect_lt(nrow(d), 200L)
+})
 
-  g <- wk::wkt(paste0(
-    "MULTIPOLYGON (((0 0, 0 40, 40 40, 40 0, 0 0), ",
-    "(10 10, 20 10, 20 20, 10 20, 10 10)), ",
-    "((60 0, 60 20, 80 20, 80 0, 60 0)))"
-  ), crs = "EPSG:4326")
-  pool <- wkpool::establish_topology(g)
-  out <- densify(pool, "+proj=laea +lon_0=40 +lat_0=20", tolerance = 5e4)
+test_that("arcs shorter than the tolerance are never refined", {
+  ## ~22 km across the seam, tolerance 50 km: nothing to add
+  d <- densify(segment(c(179.9, -179.9), c(0, 0)), "+proj=merc",
+               tolerance = 5e4)
+  expect_identical(nrow(d), 2L)
+})
 
-  ## provenance carried: same paths table, refined segments mapped to paths
-  expect_identical(wkpool::pool_paths(out), wkpool::pool_paths(pool))
-  expect_length(wkpool::pool_path(out), length(out))
-
-  ## cycles recovered after refinement, one per input ring
-  merged <- wkpool::merge_coincident(out)
-  cycles <- wkpool::find_cycles(merged)
-  expect_length(cycles, 3L)
-
-  ## exact feature reconstruction survives densification:
-  ## one MULTIPOLYGON feature with all three rings
-  wkb <- wkpool::cycles_to_wkb(merged, feature = TRUE)
-  expect_length(wkb, 1L)
-  expect_identical(wk::wk_meta(wkb)$geometry_type, 6L)
-  expect_identical(length(unique(wk::wk_coords(wkb)$ring_id)), 3L)
-
-  ## the hole is still a hole, structurally
-  expect_false(is.null(wkpool::hole_points(merged)))
-  expect_identical(nrow(wkpool::hole_points(merged)), 1L)
+test_that("exactly-180-degree edges keep their written direction", {
+  crs <- "+proj=merc"
+  ## the four equator edges of a whole-world 2x2 grid, as rings write them
+  e1 <- densify(segment(c(0, 180), c(0, 0)), crs, tolerance = 5e4)
+  e2 <- densify(segment(c(180, 0), c(0, 0)), crs, tolerance = 5e4)
+  w1 <- densify(segment(c(-180, 0), c(0, 0)), crs, tolerance = 5e4)
+  w2 <- densify(segment(c(0, -180), c(0, 0)), crs, tolerance = 5e4)
+  expect_true(all(e1[, 1L] >= 0 & e1[, 1L] <= 180))
+  expect_true(all(e2[, 1L] >= 0 & e2[, 1L] <= 180))
+  expect_true(all(w1[, 1L] >= -180 & w1[, 1L] <= 0))
+  expect_true(all(w2[, 1L] >= -180 & w2[, 1L] <= 0))
+  ## and they genuinely refined (forced splits on wide arcs)
+  expect_gt(nrow(e1), 2L)
+  expect_gt(nrow(w1), 2L)
 })

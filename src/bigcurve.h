@@ -25,11 +25,31 @@ struct Transform {
   virtual ~Transform() {}
 };
 
+// Normalize a longitude difference to [-180, 180], with the tie at
+// exactly +-180 keeping the SIGN OF THE INPUT. An edge spanning exactly
+// 180 degrees is the one case where the two representatives are
+// equidistant, and the input's written direction is the only correct
+// tiebreaker: (0 -> 180) must stay eastward, (0 -> -180) westward.
+// (std::round alone rounds ties away from zero and silently flips
+// such edges.)
+inline double unwrap_delta(double delta) {
+  double d = delta - 360.0 * std::round(delta / 360.0);
+  if (std::fabs(d) == 180.0) d = std::copysign(180.0, delta);
+  return d;
+}
+
 // Spherical midpoint of the great circle arc between two lon/lat points,
-// degrees in and out, longitude wrapped to [-180, 180).
+// degrees in and out. The longitude REPRESENTATIVE is chosen in the frame
+// of the parents: nearest to the parents' mean longitude (callers unwrap
+// lon2 relative to lon1 first). This preserves each input edge's own
+// convention -- an edge along lon 180 refines at 180, an edge along -180
+// refines at -180, and an edge written as crossing gets a locally
+// continuous chain (possibly outside [-180, 180)). The engine itself has
+// no seam; the representation the input chose is respected, never
+// canonicalized.
 inline void gc_midpoint(double lon1, double lat1, double lon2, double lat2,
                         double* lonm, double* latm) {
-  double rlon1 = lon1 * DEG2RAD;
+  double frame_mid = (lon1 + lon2) * 0.5;
   double rlat1 = lat1 * DEG2RAD;
   double rlat2 = lat2 * DEG2RAD;
   double dlon = (lon2 - lon1) * DEG2RAD;
@@ -38,9 +58,17 @@ inline void gc_midpoint(double lon1, double lat1, double lon2, double lat2,
   double cl1bx = std::cos(rlat1) + bx;
   *latm = std::atan2(std::sin(rlat1) + std::sin(rlat2),
                      std::sqrt(cl1bx * cl1bx + by * by)) * RAD2DEG;
-  double lon = (rlon1 + std::atan2(by, cl1bx)) * RAD2DEG;
-  // wrap that handles any input sign (fmod alone does not)
-  *lonm = lon - 360.0 * std::floor((lon + 180.0) / 360.0);
+  // degenerate: same meridian, or arc through/near a pole where the
+  // azimuthal term is indeterminate -- longitude is the frame mean
+  // (d3's own fallback for these cases)
+  if (std::fabs(by) < 1e-14 && std::fabs(cl1bx) < 1e-14) {
+    *lonm = frame_mid;
+    return;
+  }
+  double lon = lon1 + std::atan2(by, cl1bx) * RAD2DEG;
+  // snap to the representative nearest the parents' frame (ties keep
+  // the computed azimuthal side)
+  *lonm = frame_mid + unwrap_delta(lon - frame_mid);
 }
 
 // A vertex carries both its geographic and projected coordinates so that
@@ -66,7 +94,18 @@ public:
   // projected great-circle midpoint sits further than tol from the planar
   // chord, or lands parametrically far from the chord's middle (shear).
   Resampler(Transform& t, double tol, int max_depth)
-    : t_(t), tol2_(tol * tol), max_depth_(max_depth) {}
+    : t_(t), tol2_(tol * tol), max_depth_(max_depth) {
+    // arc floor: an arc spanning less ground than tol can never need
+    // interior vertices, so refinement stops there regardless of the
+    // planar metric. This bounds recursion on edges that cross the
+    // target projection's discontinuity (whose projected midpoints jump
+    // to the far side of the map and would otherwise recurse to
+    // max_depth). Assumes tol is in metres when converting to an angle;
+    // for non-metric target units the floor is merely conservative.
+    const double R_MEAN = 6371008.8;
+    double ang = tol > 0.0 ? tol / R_MEAN : 0.0;
+    cos_floor_ = std::cos(ang);
+  }
 
   Vertex project(double lon, double lat) {
     Vertex v;
@@ -80,10 +119,14 @@ public:
   // Densify one segment a-b, appending interior vertices (in order, not
   // including the endpoints) to out. Segments with an unprojectable
   // endpoint are left alone; unprojectable midpoints stop refinement of
-  // that branch rather than erroring.
+  // that branch rather than erroring. b is unwrapped into a's longitude
+  // frame so that all interior vertices are emitted in the frame of
+  // their input edge (see gc_midpoint).
   void edge(const Vertex& a, const Vertex& b, std::vector<Vertex>& out) {
     if (!a.ok || !b.ok) return;
-    split(a, b, max_depth_, out);
+    Vertex b2 = b;
+    b2.lon = a.lon + unwrap_delta(b.lon - a.lon);
+    split(a, b2, max_depth_, out);
   }
 
 private:
@@ -96,7 +139,11 @@ private:
     // (e.g. an oblique great circle through its own inflection), so it is
     // only allowed to adjudicate once arcs are short (d3's cosMinDistance)
     const double COS_MIN_DISTANCE = 0.8660254037844387;  // cos(30 deg)
-    bool wide = cos_angular(a.lon, a.lat, b.lon, b.lat) < COS_MIN_DISTANCE;
+    double cosang = cos_angular(a.lon, a.lat, b.lon, b.lat);
+    // arc floor: shorter than tolerance on the ground, nothing to add
+    // (also terminates on coincident/duplicate endpoints, cosang == 1)
+    if (cosang >= cos_floor_) return;
+    bool wide = cosang < COS_MIN_DISTANCE;
 
     double dx = b.x - a.x;
     double dy = b.y - a.y;
@@ -129,6 +176,7 @@ private:
   Transform& t_;
   double tol2_;
   int max_depth_;
+  double cos_floor_;
 };
 
 }  // namespace bigcurve

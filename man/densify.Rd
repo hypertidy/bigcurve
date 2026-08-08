@@ -7,7 +7,7 @@
 densify(
   x,
   target,
-  source = NULL,
+  source = "OGC:CRS84",
   tolerance = NULL,
   pixels = 2048L,
   max_depth = 16L
@@ -25,11 +25,9 @@ are refused, as densification cannot invent them at new vertices}
 \item{target}{projection for which to densify (proj string, WKT,
 authority code - anything PROJ accepts)}
 
-\item{source}{coordinate system of the input; if \code{NULL} (the
-default) a \code{wkpool} input supplies its own crs (as carried by
-wkpool >= 0.3.0.9000) and anything else is taken to be
-'EPSG:4326'; authority codes are axis-normalized so 'EPSG:4326'
-input is still given as lon,lat}
+\item{source}{coordinate system of the input, default 'OGC:CRS84'
+(longitude, latitude); authority codes are axis-normalized so
+'EPSG:4326' input is still given as lon,lat}
 
 \item{tolerance}{maximum allowed deviation, in units of \code{target}
 (usually metres); if \code{NULL} (the default) it is derived from the
@@ -72,6 +70,20 @@ Points that cannot be projected (for example beyond the horizon of an
 orthographic projection) do not error: segments touching them are left
 un-densified, and refinement stops at unprojectable midpoints. Clipping
 is out of scope here.
+
+Inserted vertices are emitted in the longitude frame of their input
+edge: an edge along longitude 180 refines at 180, its mirror at -180
+refines at -180 (the two seams of a global layer remain distinct), and
+an edge written as crossing the antimeridian yields a locally
+continuous chain, possibly outside \verb{[-180, 180)}. Input vertices are
+always returned with their written values, so a crossing edge's path
+carries one numeric 360-degree step at its far endpoint (the same
+point on the sphere; PROJ is indifferent). Longitudes are never
+canonicalized; normalize afterwards if a canonical range is needed.
+Edges that cross the \emph{target} projection's own discontinuity (which
+depends on \code{lon_0}) cannot form a valid planar chain and should be cut
+beforehand; refinement of such edges is bounded, not exploded, because
+arcs spanning less ground than \code{tolerance} are never split.
 }
 \examples{
 s <- segment(c(140, -164), c(-89, 80))
