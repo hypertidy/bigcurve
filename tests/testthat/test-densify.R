@@ -197,3 +197,36 @@ test_that("wkpool crs: pool supplies source and crs survives densify", {
   ## and refinement actually happened
   expect_gt(nrow(wkpool::pool_vertices(out)), nrow(wkpool::pool_vertices(pool)))
 })
+
+test_that("wkpool path provenance survives densify: exact reconstruction after refinement", {
+  skip_if_not_installed("wkpool", "0.3.0.9003")
+  skip_if_not_installed("wk")
+
+  g <- wk::wkt(paste0(
+    "MULTIPOLYGON (((0 0, 0 40, 40 40, 40 0, 0 0), ",
+    "(10 10, 20 10, 20 20, 10 20, 10 10)), ",
+    "((60 0, 60 20, 80 20, 80 0, 60 0)))"
+  ), crs = "EPSG:4326")
+  pool <- wkpool::establish_topology(g)
+  out <- densify(pool, "+proj=laea +lon_0=40 +lat_0=20", tolerance = 5e4)
+
+  ## provenance carried: same paths table, refined segments mapped to paths
+  expect_identical(wkpool::pool_paths(out), wkpool::pool_paths(pool))
+  expect_length(wkpool::pool_path(out), length(out))
+
+  ## cycles recovered after refinement, one per input ring
+  merged <- wkpool::merge_coincident(out)
+  cycles <- wkpool::find_cycles(merged)
+  expect_length(cycles, 3L)
+
+  ## exact feature reconstruction survives densification:
+  ## one MULTIPOLYGON feature with all three rings
+  wkb <- wkpool::cycles_to_wkb(merged, feature = TRUE)
+  expect_length(wkb, 1L)
+  expect_identical(wk::wk_meta(wkb)$geometry_type, 6L)
+  expect_identical(length(unique(wk::wk_coords(wkb)$ring_id)), 3L)
+
+  ## the hole is still a hole, structurally
+  expect_false(is.null(wkpool::hole_points(merged)))
+  expect_identical(nrow(wkpool::hole_points(merged)), 1L)
+})

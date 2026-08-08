@@ -1,2 +1,2 @@
-PKG_CPPFLAGS = -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include/webp 
-PKG_LIBS = -L/usr/local/lib -lproj 
+PKG_CPPFLAGS = -I/usr/include/x86_64-linux-gnu -I/usr/include/webp 
+PKG_LIBS = -lproj 

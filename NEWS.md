@@ -1,5 +1,12 @@
 # bigcurve (development version)
 
+* `densify()` carries wkpool path provenance (`.path` and the paths
+  table, wkpool >= 0.3.0.9003) through refinement: every refined
+  segment inherits the path of the input segment it descends from, and
+  added vertices are interior to their path, so cycles, ring roles and
+  exact feature reconstruction (`wkpool::cycles_to_wkb()`) survive
+  densification.
+
 * The default input coordinate system is now 'EPSG:4326' rather than
   'OGC:CRS84' throughout (`densify()`, `rproj_xy()`). Authority codes
   are axis-normalized on the way into PROJ, so input remains lon,lat

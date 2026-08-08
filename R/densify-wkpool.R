@@ -72,7 +72,21 @@ densify_wkpool <- function(x, target, source = NULL,
     feat <- as.integer(feat[out$parent + 1L])
   }
 
-  if (utils::packageVersion("wkpool") >= "0.3.0.9000") {
+  ctor <- names(formals(wkpool::new_wkpool))
+  if ("path" %in% ctor) {
+    ## wkpool >= 0.3.0.9003: carry path provenance through refinement
+    ## exactly like .feature - every refined segment inherits the path
+    ## of the input segment it descends from (added vertices are
+    ## interior to their path, so the paths table itself is unchanged)
+    path <- wkpool::pool_path(x)
+    if (!is.null(path)) {
+      path <- as.integer(path[out$parent + 1L])
+    }
+    wkpool::new_wkpool(vertices, vx0, vx1, feature = feat,
+                       path = path, paths = wkpool::pool_paths(x),
+                       crs = attr(x, "crs", exact = TRUE),
+                       geodesic = attr(x, "geodesic", exact = TRUE))
+  } else if (utils::packageVersion("wkpool") >= "0.3.0.9000") {
     ## supported constructor: validates invariants, carries crs/geodesic
     wkpool::new_wkpool(vertices, vx0, vx1, feature = feat,
                        crs = attr(x, "crs", exact = TRUE),
