@@ -1,0 +1,52 @@
+url: https://hypertidy.github.io/bigcurve/
+
+template:
+  bootstrap: 5
+  light-switch: true
+
+home:
+  title: bigcurve - adaptive densification of lines for map projections
+  links:
+  - text: hypertidy on GitHub
+    href: https://github.com/hypertidy
+  - text: wkpool (vertex pool topology)
+    href: https://hypertidy.github.io/wkpool/
+  - text: d3-geo (the original method)
+    href: https://github.com/d3/d3-geo
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github, lightswitch]
+
+reference:
+- title: Densify
+  desc: >
+    Insert vertices along great circle arcs where a target projection
+    bends them, for paths, segment meshes and wkpool vertex pools.
+  contents:
+  - densify
+
+- title: Helpers
+  desc: >
+    A two point line to experiment with, projecting a coordinate matrix
+    with PROJ, and a Lambert azimuthal equal area string.
+  contents:
+  - segment
+  - rproj_xy
+  - laea
+
+- title: Package
+  contents:
+  - bigcurve-package
+
+articles:
+- title: Guides
+  navbar: ~
+  contents:
+  - bigcurve-and-s2
+
+news:
+  releases:
+  - text: bigcurve on CRAN
+    href: https://cran.r-project.org/package=bigcurve
