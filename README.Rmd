@@ -1,5 +1,7 @@
 ---
-output: github_document
+output:
+  github_document:
+    md_extensions: "-smart"
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -9,7 +11,8 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.path = "man/figures/README-",
-  out.width = "100%"
+  out.width = "100%",
+  dpi = 96
 )
 ```
 
@@ -19,15 +22,40 @@ knitr::opts_chunk$set(
 [![R-CMD-check](https://github.com/hypertidy/bigcurve/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/hypertidy/bigcurve/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-The goal of bigcurve is to adaptively densify lines: insert vertices along
-great circle arcs exactly where a map projection bends them, and nowhere
-else. This is the adaptive resampling scheme of d3-geo by Mike Bostock,
-brought to R for paths and for segment meshes.
+A line between two points on the Earth is a great circle arc. Draw it on a
+flat map by joining its two ends and you draw the wrong line. bigcurve
+adds the vertices a line needs to keep its true shape in a given map
+projection: more where the projection bends it, none where it doesn't.
 
-The error is controlled in the plane of the target projection: straight
-chords drawn between output vertices stay within `tolerance` (in projected
-units) of the true projected curve. By default the tolerance is derived
-from the projected extent: about one part in 2048 of the plot.
+```{r hero, echo = FALSE, fig.height = 3.8}
+library(bigcurve)
+prj <- "+proj=eqearth"
+from <- rbind(hobart = c(147.3, -42.9), santiago = c(-70.7, -33.4),
+              new_york = c(-74.0, 40.7), perth = c(115.9, -31.9))
+to <- rbind(london = c(-0.1, 51.5), johannesburg = c(28.0, -26.2),
+            moscow = c(37.6, 55.8), johannesburg = c(28.0, -26.2))
+coast <- do.call(cbind, maps::map(plot = FALSE)[1:2])
+## break the few coastlines that run past 180 so they don't streak across
+coast[which(coast[, 1] > 180), ] <- NA
+coast_xy <- rproj_xy(coast, prj)
+straight <- lapply(seq_len(nrow(from)), function(i) rbind(from[i, ], to[i, ]))
+curved <- lapply(straight, densify, target = prj)
+op <- par(mar = c(0, 0, 0, 0))
+plot(coast_xy, type = "n", asp = 1, axes = FALSE, xlab = "", ylab = "")
+lines(coast_xy, col = "grey70")
+for (r in straight) lines(rproj_xy(r, prj), lty = 2, col = "firebrick")
+for (r in curved) lines(rproj_xy(r, prj), lwd = 2)
+for (r in straight) points(rproj_xy(r, prj), pch = 19, cex = 0.8)
+legend("bottomleft", bty = "n", lty = c(2, 1), lwd = c(1, 2),
+       col = c("firebrick", "black"),
+       legend = c("two ends joined on the map", "densified with bigcurve"))
+par(op)
+```
+
+The method is the adaptive resampling Mike Bostock wrote for
+[d3-geo](https://github.com/d3/d3-geo), with projections from
+[PROJ](https://proj.org). The error is measured where it matters: in the
+plane of the map you are going to draw.
 
 ## Installation
 
@@ -40,83 +68,155 @@ install.packages("bigcurve")
 The development version is on r-universe:
 
 ``` r
-install.packages("bigcurve", repos = c("https://hypertidy.r-universe.dev", "https://cloud.r-project.org"))
+install.packages("bigcurve",
+                 repos = c("https://hypertidy.r-universe.dev", "https://cloud.r-project.org"))
 ```
 
-Building from source needs the PROJ development library (`libproj-dev` on
-Debian/Ubuntu, `proj-devel` on Fedora, `proj` from Homebrew); Rtools on
-Windows has PROJ built in.
+Building from source needs the PROJ library, version 8 or later
+(`libproj-dev` on Debian and Ubuntu, `proj-devel` on Fedora, `proj` from
+Homebrew); Rtools on Windows has PROJ built in.
 
-## Example
+## Quick start
 
-We get *just enough* points to carry the curvature of a line from point A
-to point B (the shortest great circle distance) into a projection.
+`densify()` takes longitude, latitude coordinates and a target
+projection, and returns longitude, latitude coordinates with the new
+vertices in place. `segment()` makes a two point line to play with.
 
-```{r example}
+```{r quick}
 library(bigcurve)
-crs <- "+proj=tmerc +lon_0=147 +lat_0=-42"
-s <- segment(c(140, -164), c(-89, 80))
-d <- densify(s, crs)
-dim(d)
+hobart_london <- segment(c(147.3, -0.1), c(-42.9, 51.5))
+hobart_london
 
-op <- par(mfrow = c(2, 1), mar = rep(0.2, 4))
-m <- do.call(cbind, maps::map(plot = FALSE)[1:2])
-plot(d, type = "l"); lines(m); axis(1); axis(2)
-text(s, lab = c("A", "B"), pos = 2)
-plot(rproj_xy(d, crs), type = "l", asp = 1)
-plot(rproj_xy(d, crs), type = "p", asp = 1)
+d <- densify(hobart_london, "+proj=eqearth")
+nrow(d)
+head(d)
+```
 
-points(rproj_xy(m, crs), pch = ".")
-axis(1); axis(2)
+The output is still in longitude and latitude, so any tool can project
+it. `rproj_xy()` projects a coordinate matrix with PROJ:
+
+```{r quick-project}
+head(rproj_xy(d, "+proj=eqearth"), 3)
+```
+
+## Adaptive: the projection decides
+
+The same line needs a different number of vertices in each projection,
+because it is a different curve on each map. Where a projection draws a
+great circle as a straight line it needs no new vertices at all: in a
+gnomonic projection every great circle is straight.
+
+```{r adaptive, fig.height = 3, fig.show = "hold"}
+projections <- c(eqearth = "+proj=eqearth",
+                 laea = "+proj=laea +lon_0=70 +lat_0=10",
+                 gnom = "+proj=gnom +lon_0=100 +lat_0=0")
+s <- segment(c(100, 160), c(-35, -35))
+op <- par(mfrow = c(1, 3), mar = c(0.5, 0.5, 2, 0.5))
+for (p in names(projections)) {
+  d <- densify(s, projections[[p]])
+  xy <- rproj_xy(d, projections[[p]])
+  plot(xy, type = "l", asp = 1, axes = FALSE, xlab = "", ylab = "")
+  points(xy, pch = 19, cex = 0.6)
+  box(col = "grey80")
+  title(sprintf("%s: %d vertices", p, nrow(d)), font.main = 1)
+}
 par(op)
 ```
 
-The same path in a different projection is the *same path*, densified
-differently, because the curvature is a different situation there.
+## Tolerance
 
-```{r different}
-crs2 <- "+proj=stere +lon_0=180 +lat_0=20"
-d2 <- densify(s, crs2)
-plot(rproj_xy(d2, crs2), type = "l", asp = 1)
-points(rproj_xy(m, crs2), pch = ".")
+`tolerance` is how far, in the map's own units (usually metres), the drawn
+chords may stray from the true curve. The default is one part in 2048 of
+the projected extent, about a pixel on a large plot; set it directly for
+anything else.
+
+```{r tolerance}
+sapply(c(100000, 10000, 1000, 100), function(tol)
+  nrow(densify(hobart_london, "+proj=eqearth", tolerance = tol)))
 ```
+
+A tenfold tighter tolerance costs about three times the vertices (the
+square root of ten), because the error of a chord falls with the square
+of its length.
+
+## Inputs
+
+`densify()` accepts
+
+* a two column matrix (one path),
+* a list of matrices (several paths),
+* a segment mesh in the rgl `mesh3d` style (`vb` vertices, `is` segment
+  index pairs),
+* a [wkpool](https://github.com/hypertidy/wkpool) vertex pool, and so any
+  geometry that wk can read (sf, geos, s2, WKB, WKT) after
+  `wkpool::establish_topology()`.
+
+A pool comes back as a pool, keeping its crs, its feature and path
+provenance, and its existing vertex ids, with new ids for the added
+vertices.
 
 ## Graticules and shared boundaries
 
-`densify()` also works on segment meshes (rgl mesh3d style, `vb` vertices
-and `is` segment indices), and on vertex pool topology from
-[wkpool](https://github.com/hypertidy/wkpool), so any geometry that wk can
-read refines in one call. An edge shared by two neighbouring polygons gets
-the same new vertices from both sides.
+A grid is the classic case. Each cell edge runs between two corners, so
+it is a great circle arc, and on a polar map nearly every one of them
+bends. An edge shared by two neighbouring cells gets exactly the same new
+vertices from both sides, so the cells still fit together after
+densifying.
 
-```{r adaptive-wkpool}
-## a coarse 30 degree world grid, as polygons
+```{r graticule, fig.height = 4.5}
 lon <- seq(-180, 150, by = 30)
-lat <- seq(-60, 30, by = 30)
+lat <- seq(-75, -45, by = 15)
 cells <- expand.grid(x = lon, y = lat)
 wkt <- sprintf("POLYGON ((%s %s, %s %s, %s %s, %s %s, %s %s))",
-               cells$x, cells$y, cells$x + 30, cells$y, cells$x + 30, cells$y + 30,
-               cells$x, cells$y + 30, cells$x, cells$y)
+               cells$x, cells$y, cells$x + 30, cells$y, cells$x + 30, cells$y + 15,
+               cells$x, cells$y + 15, cells$x, cells$y)
 pool <- wkpool::establish_topology(wk::wkt(wkt, crs = "OGC:CRS84"))
 
 prj <- "+proj=laea +lon_0=0 +lat_0=-90"
 out <- densify(pool, prj)
 c(input = nrow(wkpool::pool_vertices(pool)),
-  output = nrow(wkpool::pool_vertices(out)))
-
-## back to geometry, then project with wk and PROJ (the fast general path)
-geom <- wkpool::segments_to_wkb(out)
-drawn <- wk::wk_transform(geom, PROJ::proj_trans_create(wk::wk_crs(geom), prj))
-xy <- wk::wk_coords(drawn)
-plot(range(xy$x), range(xy$y), type = "n", asp = 1, axes = FALSE, xlab = "", ylab = "")
-plot(drawn, add = TRUE)
-points(xy$x, xy$y, pch = 19, cex = 0.3)
+  densified = nrow(wkpool::pool_vertices(out)))
 ```
 
-Output stays in longitude and latitude, so any projection tool can draw
-it; `wk::wk_transform()` with a `PROJ::proj_trans_create()` transform is
-the quickest general route for wk geometry, and `rproj_xy()` does the same
-for a plain coordinate matrix.
+Each cell was densified on its own, yet merging coincident vertices
+afterwards gives exactly the vertices you get by merging first and
+densifying the shared edges once. The twins agree to the last bit:
+
+```{r graticule-identity}
+merged_after <- wkpool::pool_vertices(wkpool::merge_coincident(out))
+merged_first <- wkpool::pool_vertices(densify(wkpool::merge_coincident(pool), prj))
+nrow(merged_after)
+identical(sort(complex(real = merged_after$x, imaginary = merged_after$y)),
+          sort(complex(real = merged_first$x, imaginary = merged_first$y)))
+```
+
+To draw it, turn the pool back into geometry and project with wk and
+PROJ, the fast general path for wk geometry:
+
+```{r graticule-draw, fig.height = 4.5, fig.show = "hold"}
+geom <- wkpool::cycles_to_wkb(wkpool::merge_coincident(out))
+drawn <- wk::wk_transform(geom, PROJ::proj_trans_create(wk::wk_crs(geom), prj))
+xy <- wk::wk_coords(drawn)
+op <- par(mar = rep(0.5, 4))
+plot(range(xy$x), range(xy$y), type = "n", asp = 1, axes = FALSE, xlab = "", ylab = "")
+plot(drawn, add = TRUE, col = "grey95")
+points(xy$x, xy$y, pch = 19, cex = 0.3)
+par(op)
+```
+
+## The edges of the map
+
+* **Points that can't be projected never error.** A segment with an end
+  beyond the horizon of an orthographic map, say, is left as it is.
+  Clipping is a job for another package.
+* **The antimeridian.** bigcurve keeps whatever longitudes you give it.
+  An edge written from 170 to -170 refines continuously through 180, and
+  an edge along 180 stays at 180. To join the two sides of the seam into
+  one boundary, densify first and then use
+  `wkpool::merge_coincident(period_x = 360)`.
+* **A sphere, not an ellipsoid.** New vertices are great circle midpoints
+  on a sphere, as in s2 and d3-geo. For drawing a map the difference is
+  invisible.
 
 ## bigcurve and s2
 
@@ -124,19 +224,24 @@ s2 and bigcurve agree that an edge between two longitude, latitude points
 is a great circle arc. s2 works out what a shape is on the sphere
 (intersections, areas, distances); bigcurve draws that shape in any map
 projection with just enough vertices. The vignette walks through the
-difference: `vignette("bigcurve-and-s2", package = "bigcurve")`.
+difference and shows them working together:
+`vignette("bigcurve-and-s2", package = "bigcurve")`.
 
-## Notes
+## How it works
 
-Output coordinates are in the source coordinate system (geographic by
-default); project them for plotting, as above. Points that cannot be
-projected (beyond the horizon of an orthographic projection, say) never
-error: their segments are simply left alone, clipping is a job for
-another package.
+For each segment, bigcurve projects the great circle midpoint and
+measures how far it lands from the straight chord between the projected
+ends. If that is more than `tolerance`, or the midpoint lands well off the
+middle of the chord, the segment is split in two and each half is checked
+the same way, down to `max_depth` levels. Arcs longer than 30 degrees
+always split, since a long arc can curve away and back and fool the
+midpoint test.
 
-The proper source of goodness is here:
-
-<https://bost.ocks.org/mike/example/>
+The engine is a small header-only C++ file (`src/bigcurve.h`) with no R
+or PROJ in it; the transform is plugged in from outside. It follows
+d3-geo's `resampleLineTo`, and carries d3-geo's ISC notice in
+`inst/COPYRIGHTS`. Mike Bostock's write-up of the idea is at
+<https://bost.ocks.org/mike/example/>.
 
 ---
 
