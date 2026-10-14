@@ -1,6 +1,7 @@
 # MIT License
 
-Copyright (c) 2021 bigcurve authors
+Copyright (c) 2021-2026 Michael D. Sumner; see inst/COPYRIGHTS for code
+ported from d3-geo (Copyright 2010-2024 Mike Bostock, ISC licence)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

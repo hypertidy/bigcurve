@@ -1,4 +1,7 @@
+#include <algorithm>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <cpp11.hpp>
@@ -110,6 +113,11 @@ list densify_path_cpp(doubles lon, doubles lat,
 // parent giving the 0-based input edge each output edge descends from --
 // the hook for carrying per-segment attributes (feature, ring, arc)
 // through refinement.
+//
+// An edge that occurs more than once with the same two vertex indices
+// (in either direction, as a shared boundary does in a merged pool) is
+// refined once: later occurrences reuse the vertices minted the first
+// time, reversed as needed, so neighbours stay joined.
 [[cpp11::register]]
 list densify_mesh_cpp(doubles x, doubles y,
                       integers s0, integers s1,
@@ -131,6 +139,11 @@ list densify_mesh_cpp(doubles x, doubles y,
   e1.reserve((size_t)s0.size() * 2);
   parent.reserve((size_t)s0.size() * 2);
   std::vector<bigcurve::Vertex> interior;
+  // undirected index pair -> (first-seen start vertex, first minted
+  // vertex index, number minted)
+  struct Seen { int from; int first; int n; };
+  std::unordered_map<long long, Seen> seen;
+  std::vector<int> chain;
 
   for (R_xlen_t k = 0; k < s0.size(); k++) {
     int a = s0[k];
@@ -138,13 +151,28 @@ list densify_mesh_cpp(doubles x, doubles y,
     if (a < 0 || b < 0 || a >= (int)nv || b >= (int)nv) {
       stop("edge index out of range");
     }
-    interior.clear();
-    rs.edge(v[(size_t)a], v[(size_t)b], interior);
+    long long key = (long long)std::min(a, b) * (long long)nv +
+                    (long long)std::max(a, b);
+    chain.clear();
+    auto hit = seen.find(key);
+    if (hit != seen.end()) {
+      const Seen& h = hit->second;
+      for (int j = 0; j < h.n; j++) chain.push_back(h.first + j);
+      if (h.from != a) std::reverse(chain.begin(), chain.end());
+    } else {
+      interior.clear();
+      rs.edge(v[(size_t)a], v[(size_t)b], interior);
+      int first = (int)vx.size();
+      for (size_t j = 0; j < interior.size(); j++) {
+        vx.push_back(interior[j].lon);
+        vy.push_back(interior[j].lat);
+        chain.push_back(first + (int)j);
+      }
+      seen.emplace(key, Seen{a, first, (int)interior.size()});
+    }
     int prev = a;
-    for (size_t j = 0; j < interior.size(); j++) {
-      vx.push_back(interior[j].lon);
-      vy.push_back(interior[j].lat);
-      int idx = (int)vx.size() - 1;
+    for (size_t j = 0; j < chain.size(); j++) {
+      int idx = chain[j];
       e0.push_back(prev);
       e1.push_back(idx);
       parent.push_back((int)k);

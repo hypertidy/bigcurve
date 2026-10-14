@@ -27,19 +27,25 @@ brought to R for paths and for segment meshes.
 The error is controlled in the plane of the target projection: straight
 chords drawn between output vertices stay within `tolerance` (in projected
 units) of the true projected curve. By default the tolerance is derived
-from the projected extent, "about one part in 2048 of the plot".
+from the projected extent: about one part in 2048 of the plot.
 
 ## Installation
 
-You can install the development version of bigcurve like so:
+Once bigcurve is on CRAN:
+
+``` r
+install.packages("bigcurve")
+```
+
+The development version is on r-universe:
 
 ``` r
 install.packages("bigcurve", repos = c("https://hypertidy.r-universe.dev", "https://cloud.r-project.org"))
 ```
 
-You will need the PROJ development library (`libproj-dev` on
-Debian/Ubuntu, `proj-devel` on Fedora, `proj` from Homebrew); Windows and
-recent Rtools have PROJ built in.
+Building from source needs the PROJ development library (`libproj-dev` on
+Debian/Ubuntu, `proj-devel` on Fedora, `proj` from Homebrew); Rtools on
+Windows has PROJ built in.
 
 ## Example
 
@@ -75,39 +81,47 @@ plot(rproj_xy(d2, crs2), type = "l", asp = 1)
 points(rproj_xy(m, crs2), pch = ".")
 ```
 
-## Graticules
+## Graticules and shared boundaries
 
 `densify()` also works on segment meshes (rgl mesh3d style, `vb` vertices
-and `is` segment indices), so a whole graticule refines in one call.
-`textures::segs()` builds one and textures provides the 2D mesh plot.
-
-```{r graticule}
-library(textures)
-prj <- "+proj=laea +lat_0=-60"
-mesh <- segs(c(40, 20), extent = c(-180, 180, -65, 65))
-out <- densify(mesh, prj)
-c(input = ncol(mesh$vb), output = ncol(out$vb))
-
-## project the refined mesh for display
-out$vb[1:2, ] <- t(rproj_xy(t(out$vb[1:2, , drop = FALSE]), prj))
-plot(out, asp = 1)
-points(t(out$vb[1:2, ]))
-```
-
-Convert an input polygon dataset, compare with and without adaptive densification. 
+and `is` segment indices), and on vertex pool topology from
+[wkpool](https://github.com/hypertidy/wkpool), so any geometry that wk can
+read refines in one call. An edge shared by two neighbouring polygons gets
+the same new vertices from both sides.
 
 ```{r adaptive-wkpool}
-p <- geos::as_geos_geometry(terra::as.polygons(terra::rast(terra::ext(-150, 150, -85, 85), res = 15)))
+## a coarse 30 degree world grid, as polygons
+lon <- seq(-180, 150, by = 30)
+lat <- seq(-60, 30, by = 30)
+cells <- expand.grid(x = lon, y = lat)
+wkt <- sprintf("POLYGON ((%s %s, %s %s, %s %s, %s %s, %s %s))",
+               cells$x, cells$y, cells$x + 30, cells$y, cells$x + 30, cells$y + 30,
+               cells$x, cells$y + 30, cells$x, cells$y)
+pool <- wkpool::establish_topology(wk::wkt(wkt, crs = "OGC:CRS84"))
 
-tgt <- "+proj=laea"
-tr <- PROJ::proj_trans_create(wk::wk_crs(p)$wkt, tgt)
+prj <- "+proj=laea +lon_0=0 +lat_0=-90"
+out <- densify(pool, prj)
+c(input = nrow(wkpool::pool_vertices(pool)),
+  output = nrow(wkpool::pool_vertices(out)))
 
-plot(wk::wk_transform(p, tr))
-x <- wk::wk_transform(wkpool::segments_to_wkb(bigcurve::densify(wkpool::establish_topology(p), tgt, source = wk::wk_crs(p)$wkt)), tr)
-plot(x)
-points(wk::wk_coords(x)[, c("x", "y"), drop = FALSE], pch = 19, cex = .5)
-
+## project the refined segments for display
+v <- wkpool::pool_vertices(out)
+s <- wkpool::pool_segments(out)
+xy <- rproj_xy(cbind(v$x, v$y), prj)
+p0 <- xy[match(s$.vx0, v$.vx), ]
+p1 <- xy[match(s$.vx1, v$.vx), ]
+plot(rbind(p0, p1), type = "n", asp = 1, axes = FALSE, xlab = "", ylab = "")
+segments(p0[, 1], p0[, 2], p1[, 1], p1[, 2])
+points(xy, pch = 19, cex = 0.3)
 ```
+
+## bigcurve and s2
+
+s2 and bigcurve agree that an edge between two longitude, latitude points
+is a great circle arc. s2 works out what a shape is on the sphere
+(intersections, areas, distances); bigcurve draws that shape in any map
+projection with just enough vertices. The vignette walks through the
+difference: `vignette("bigcurve-and-s2", package = "bigcurve")`.
 
 ## Notes
 

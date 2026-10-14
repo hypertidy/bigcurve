@@ -1,33 +1,42 @@
 Package: bigcurve
-Title: Adaptive Densifying of Lines
-Version: 0.5.0.9001
-Authors@R:
-    c(person("Michael D.", "Sumner", , "mdsumner@gmail.com", role = c("aut", "cre")),
-      person("Simon", "Wotherspoon", role = "ctb",  comment = "wrote SGAT::trackMdpts, the ancestor of the spherical midpoint used here"))
+Title: Adaptive Densification of Lines for Map Projections
+Version: 0.6.0
+Authors@R: c(
+    person("Michael D.", "Sumner", , "mdsumner@gmail.com", role = c("aut", "cre", "cph")),
+    person("Simon", "Wotherspoon", role = "ctb",
+           comment = "wrote SGAT::trackMdpts, the ancestor of the spherical midpoint used here"),
+    person("Mike", "Bostock", role = c("ctb", "cph"),
+           comment = "author of the 'd3-geo' adaptive resampling method ported here; see inst/COPYRIGHTS")
+  )
 Description: Densify lines adaptively, as required by the curvature a map
-    projection imposes on them. Vertices are inserted along great circle
-    arcs only where the projected curve deviates from a straight chord by
-    more than a tolerance, following the adaptive resampling scheme of
-    'd3-geo' by Mike Bostock.
+    projection imposes on them. Edges are read as great circle arcs, and
+    vertices are inserted along them only where the projected curve
+    deviates from a straight chord by more than a tolerance measured on the
+    map, following the adaptive resampling scheme of 'd3-geo'
+    <https://github.com/d3/d3-geo>. Projections are computed with the
+    'PROJ' library, so any coordinate reference system it supports can be a
+    target. Inputs can be coordinate matrices, segment meshes or vertex pool
+    topology from 'wkpool', and edges shared by neighbouring polygons
+    receive identical new vertices.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Imports:
-    glue,
-    utils
+    stats
 URL: https://github.com/hypertidy/bigcurve
 BugReports: https://github.com/hypertidy/bigcurve/issues
 Suggests:
+    knitr,
     maps,
+    rmarkdown,
+    s2,
     testthat (>= 3.0.0),
-    textures,
-    vctrs,
     wk,
-    wkpool (>= 0.3.0.9005)
+    wkpool (>= 0.4.0)
+VignetteBuilder: knitr
 Config/testthat/edition: 3
 LinkingTo:
     cpp11
 SystemRequirements: PROJ (>= 8.0.0): libproj-dev (deb), proj-devel (rpm),
     proj (brew)
 Config/roxygen2/version: 8.0.0
-Remotes: hypertidy/wkpool
