@@ -9,7 +9,9 @@
 // for the PROJ one). Keep it that way: this file is the piece that gets
 // reused in Python (or rewritten in Rust) later.
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <vector>
 
 namespace bigcurve {
@@ -119,14 +121,33 @@ public:
   // Densify one segment a-b, appending interior vertices (in order, not
   // including the endpoints) to out. Segments with an unprojectable
   // endpoint are left alone; unprojectable midpoints stop refinement of
-  // that branch rather than erroring. b is unwrapped into a's longitude
-  // frame so that all interior vertices are emitted in the frame of
-  // their input edge (see gc_midpoint).
+  // that branch rather than erroring. All interior vertices are emitted
+  // in the longitude frame of the written start vertex a (see
+  // gc_midpoint).
+  //
+  // The arithmetic always runs in one canonical direction, from the
+  // endpoint with the lexicographically smaller (lon, lat) to the other,
+  // and the chain is reversed afterwards if a-b was written the other
+  // way. So a-b and b-a yield bitwise identical interior vertices (up to
+  // an exact multiple of 360 in longitude when the edge crosses the
+  // antimeridian), and an edge shared by two neighbouring rings refines
+  // to the same vertices from both sides.
   void edge(const Vertex& a, const Vertex& b, std::vector<Vertex>& out) {
     if (!a.ok || !b.ok) return;
-    Vertex b2 = b;
-    b2.lon = a.lon + unwrap_delta(b.lon - a.lon);
-    split(a, b2, max_depth_, out);
+    bool rev = (b.lon < a.lon) || (b.lon == a.lon && b.lat < a.lat);
+    const Vertex& p = rev ? b : a;
+    Vertex q = rev ? a : b;
+    q.lon = p.lon + unwrap_delta(q.lon - p.lon);
+    std::size_t start = out.size();
+    split(p, q, max_depth_, out);
+    if (!rev) return;
+    std::reverse(out.begin() + start, out.end());
+    // p is b here and q is a unwrapped into b's frame; move the chain
+    // into a's frame by the exact multiple of 360 that separates them
+    double shift = 360.0 * std::round((a.lon - q.lon) / 360.0);
+    if (shift != 0.0) {
+      for (std::size_t k = start; k < out.size(); k++) out[k].lon += shift;
+    }
   }
 
 private:

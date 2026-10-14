@@ -7,7 +7,7 @@
 densify(
   x,
   target,
-  source = "OGC:CRS84",
+  source = NULL,
   tolerance = NULL,
   pixels = 2048L,
   max_depth = 16L
@@ -25,13 +25,15 @@ are refused, as densification cannot invent them at new vertices}
 \item{target}{projection for which to densify (proj string, WKT,
 authority code - anything PROJ accepts)}
 
-\item{source}{coordinate system of the input, default 'OGC:CRS84'
-(longitude, latitude); authority codes are axis-normalized so
-'EPSG:4326' input is still given as lon,lat}
+\item{source}{coordinate system of the input. If \code{NULL} (the default)
+it is taken from a \code{wkpool} input's own crs when it has one, and
+otherwise is 'EPSG:4326' (longitude, latitude); authority codes are
+axis-normalized so 'EPSG:4326' input is still given as lon,lat}
 
 \item{tolerance}{maximum allowed deviation, in units of \code{target}
 (usually metres); if \code{NULL} (the default) it is derived from the
-projected extent of the input as \code{min(diff(range))/pixels}}
+larger side of the projected extent of the input as
+\code{max(diff(range))/pixels}}
 
 \item{pixels}{notional output width/height used to derive the default
 \code{tolerance}, i.e. "keep error under about one part in \code{pixels} of the
@@ -64,7 +66,9 @@ transforms are used and each point is projected exactly once.
 
 Coordinates are returned in the coordinates of \code{source} (geographic by
 default): project the result yourself for plotting, e.g. with
-\code{\link[=rproj_xy]{rproj_xy()}} or your tool of choice.
+\code{\link[=rproj_xy]{rproj_xy()}} for a matrix or, for wk geometry (such as
+\code{wkpool::segments_to_wkb()} of a refined pool), with \code{wk::wk_transform()}
+and a \code{PROJ::proj_trans_create()} transform.
 
 Points that cannot be projected (for example beyond the horizon of an
 orthographic projection) do not error: segments touching them are left
@@ -84,6 +88,18 @@ Edges that cross the \emph{target} projection's own discontinuity (which
 depends on \code{lon_0}) cannot form a valid planar chain and should be cut
 beforehand; refinement of such edges is bounded, not exploded, because
 arcs spanning less ground than \code{tolerance} are never split.
+
+Every edge is a great circle arc on a sphere, the same reading of an
+edge that 's2' uses. Data whose edges are meant as straight lines in
+longitude and latitude describe a different shape, and densifying them
+here changes it.
+
+Shared edges stay shared. An edge refines to the same vertices whichever
+way it is written, bit for bit, so two neighbouring polygons get
+identical new vertices along their common boundary (and
+\code{wkpool::merge_coincident()} fuses them). An edge that appears twice with
+the same vertices, as in a merged pool or a segment mesh, is refined
+once and its new vertices are reused.
 }
 \examples{
 s <- segment(c(140, -164), c(-89, 80))

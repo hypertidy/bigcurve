@@ -1,4 +1,4 @@
-## densify() for wkpool objects (hypertidy/wkpool >= 0.3.0)
+## densify() for wkpool objects (wkpool >= 0.4.0)
 ##
 ## A wkpool is already bigcurve's native data model: a vertex pool plus
 ## directed segment index pairs, with segments as the atomic unit. The
@@ -8,15 +8,15 @@
 ## the way in, positions -> ids on the way out, with fresh ids minted for
 ## the vertices densification adds.
 ##
-## Per-segment attributes (.feature) are carried through refinement via
-## the engine's 'parent' index: every output segment inherits from the
-## input segment it descends from. Added vertices are degree-2 by
-## construction, so the arc-node structure of the pool is unchanged.
+## Per-segment attributes (.feature, .path) are carried through refinement
+## via the engine's 'parent' index: every output segment inherits from the
+## input segment it descends from. Added vertices are interior to their
+## path and degree-2 by construction, so the paths table and the arc-node
+## structure of the pool are unchanged.
 ##
-## Since wkpool 0.3.0.9000 a pool carries its crs (and geodesic flag)
-## per wk convention. When 'source' is not supplied we take it from the
-## pool, falling back to EPSG:4326, and both attributes are carried
-## onto the refined pool.
+## A pool carries its crs (and geodesic flag) per wk convention. When
+## 'source' is not supplied we take it from the pool, falling back to
+## EPSG:4326, and both attributes are carried onto the refined pool.
 
 ## resolve a pool's crs to something PROJ accepts, or NULL
 pool_crs_proj <- function(x) {
@@ -72,31 +72,12 @@ densify_wkpool <- function(x, target, source = NULL,
     feat <- as.integer(feat[out$parent + 1L])
   }
 
-  ctor <- names(formals(wkpool::new_wkpool))
-  if ("path" %in% ctor) {
-    ## wkpool >= 0.3.0.9003: carry path provenance through refinement
-    ## exactly like .feature - every refined segment inherits the path
-    ## of the input segment it descends from (added vertices are
-    ## interior to their path, so the paths table itself is unchanged)
-    path <- wkpool::pool_path(x)
-    if (!is.null(path)) {
-      path <- as.integer(path[out$parent + 1L])
-    }
-    wkpool::new_wkpool(vertices, vx0, vx1, feature = feat,
-                       path = path, paths = wkpool::pool_paths(x),
-                       crs = attr(x, "crs", exact = TRUE),
-                       geodesic = attr(x, "geodesic", exact = TRUE))
-  } else if (utils::packageVersion("wkpool") >= "0.3.0.9000") {
-    ## supported constructor: validates invariants, carries crs/geodesic
-    wkpool::new_wkpool(vertices, vx0, vx1, feature = feat,
-                       crs = attr(x, "crs", exact = TRUE),
-                       geodesic = attr(x, "geodesic", exact = TRUE))
-  } else {
-    ## wkpool < 0.3.0.9000 does not export its constructor: build the
-    ## rcrd directly, honouring new_wkpool()'s invariants (checked above
-    ## by construction: every .vx0/.vx1 is drawn from vertices$.vx)
-    fields <- list(.vx0 = vx0, .vx1 = vx1)
-    if (!is.null(feat)) fields$.feature <- feat
-    vctrs::new_rcrd(fields, pool = vertices, class = "wkpool")
+  path <- wkpool::pool_path(x)
+  if (!is.null(path)) {
+    path <- as.integer(path[out$parent + 1L])
   }
+  wkpool::new_wkpool(vertices, vx0, vx1, feature = feat,
+                     path = path, paths = wkpool::pool_paths(x),
+                     crs = attr(x, "crs", exact = TRUE),
+                     geodesic = isTRUE(attr(x, "geodesic", exact = TRUE)))
 }

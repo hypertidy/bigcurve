@@ -6,3 +6,4 @@
 ^\.github$
 ^example.R$
 ^MIGRATION.md$
+^cran-comments\.md$

@@ -41,5 +41,6 @@ segment <- function(x = runif(2L, -180, 180), y = runif(2L, -90, 90)) {
 #' laea()
 #' laea(147, -42)
 laea <- function(lon_0 = 0, lat_0 = 0, x_0 = 0, y_0 = 0) {
-  glue::glue("+proj=laea +lon_0={lon_0} +lat_0={lat_0} +x_0={x_0} +y_0={y_0} +datum=WGS84")
+  paste0("+proj=laea +lon_0=", lon_0, " +lat_0=", lat_0,
+         " +x_0=", x_0, " +y_0=", y_0, " +datum=WGS84")
 }

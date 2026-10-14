@@ -1,4 +1,35 @@
-# bigcurve (development version)
+# bigcurve 0.6.0
+
+First CRAN release.
+
+* Edges shared by neighbouring polygons now refine to identical vertices.
+  The refinement arithmetic always runs in one canonical direction and
+  the chain is reversed afterwards, so `a -> b` and `b -> a` give bitwise
+  identical new vertices (previously some differed in the last bits, so
+  `wkpool::merge_coincident()` could not fuse them). An edge that occurs
+  more than once with the same vertices (a merged pool, a segment mesh) is
+  refined once and its new vertices are reused.
+
+* `densify()` now really defaults to `source = NULL`, so a wkpool input's
+  own crs is used. Previously the documented default was not the one in
+  the code, and a pool in projected units was read as degrees.
+
+* The default `tolerance` is now derived from the larger side of the
+  projected extent, so a single parallel or meridian (zero width in one
+  direction) no longer errors.
+
+* Requires wkpool >= 0.4.0 (CRAN) for pool input; the fallbacks for older
+  wkpool versions, and the vctrs and utils dependencies they needed, are
+  gone. glue is no longer used.
+
+* New vignette, "bigcurve and s2", contrasting bigcurve with s2.
+
+* Credit and licence notice for the d3-geo resampling method in
+  `inst/COPYRIGHTS`; Mike Bostock added as contributor and copyright
+  holder.
+
+# bigcurve 0.5.0.9001
+
 
 * `densify()` carries wkpool path provenance (`.path` and the paths
   table, wkpool >= 0.3.0.9003) through refinement: every refined

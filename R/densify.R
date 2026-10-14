@@ -17,7 +17,9 @@
 #'
 #' Coordinates are returned in the coordinates of `source` (geographic by
 #' default): project the result yourself for plotting, e.g. with
-#' [rproj_xy()] or your tool of choice.
+#' [rproj_xy()] for a matrix or, for wk geometry (such as
+#' `wkpool::segments_to_wkb()` of a refined pool), with `wk::wk_transform()`
+#' and a `PROJ::proj_trans_create()` transform.
 #'
 #' Points that cannot be projected (for example beyond the horizon of an
 #' orthographic projection) do not error: segments touching them are left
@@ -38,6 +40,18 @@
 #' beforehand; refinement of such edges is bounded, not exploded, because
 #' arcs spanning less ground than `tolerance` are never split.
 #'
+#' Every edge is a great circle arc on a sphere, the same reading of an
+#' edge that 's2' uses. Data whose edges are meant as straight lines in
+#' longitude and latitude describe a different shape, and densifying them
+#' here changes it.
+#'
+#' Shared edges stay shared. An edge refines to the same vertices whichever
+#' way it is written, bit for bit, so two neighbouring polygons get
+#' identical new vertices along their common boundary (and
+#' `wkpool::merge_coincident()` fuses them). An edge that appears twice with
+#' the same vertices, as in a merged pool or a segment mesh, is refined
+#' once and its new vertices are reused.
+#'
 #' @param x a two-column matrix of lon,lat (a path), a list of such
 #'   matrices, a segment mesh (a list with `vb`, a 4 x n vertex matrix
 #'   with rows x, y, z, h, and `is`, a 2 x m segment index matrix,
@@ -47,12 +61,14 @@
 #'   are refused, as densification cannot invent them at new vertices
 #' @param target projection for which to densify (proj string, WKT,
 #'   authority code - anything PROJ accepts)
-#' @param source coordinate system of the input, default 'OGC:CRS84'
-#'   (longitude, latitude); authority codes are axis-normalized so
-#'   'EPSG:4326' input is still given as lon,lat
+#' @param source coordinate system of the input. If `NULL` (the default)
+#'   it is taken from a `wkpool` input's own crs when it has one, and
+#'   otherwise is 'EPSG:4326' (longitude, latitude); authority codes are
+#'   axis-normalized so 'EPSG:4326' input is still given as lon,lat
 #' @param tolerance maximum allowed deviation, in units of `target`
 #'   (usually metres); if `NULL` (the default) it is derived from the
-#'   projected extent of the input as `min(diff(range))/pixels`
+#'   larger side of the projected extent of the input as
+#'   `max(diff(range))/pixels`
 #' @param pixels notional output width/height used to derive the default
 #'   `tolerance`, i.e. "keep error under about one part in `pixels` of the
 #'   plot"; ignored when `tolerance` is supplied
@@ -72,7 +88,7 @@
 #' d <- densify(s, "+proj=laea +lon_0=147 +lat_0=-42")
 #' nrow(d)
 #' plot(rproj_xy(d, "+proj=laea +lon_0=147 +lat_0=-42"), type = "l", asp = 1)
-densify <- function(x, target, source = "OGC:CRS84",
+densify <- function(x, target, source = NULL,
                     tolerance = NULL, pixels = 2048L, max_depth = 16L) {
   stopifnot(is.numeric(pixels), pixels >= 1, is.numeric(max_depth))
   max_depth <- as.integer(max_depth)
@@ -81,6 +97,7 @@ densify <- function(x, target, source = "OGC:CRS84",
     return(densify_wkpool(x, target, source = source, tolerance = tolerance,
                           pixels = pixels, max_depth = max_depth))
   }
+  source <- source %||% default_crs()
 
   if (is.matrix(x)) {
     tol <- tolerance %||% default_tolerance(x, target, source, pixels)
@@ -111,15 +128,17 @@ densify <- function(x, target, source = "OGC:CRS84",
   stop("'x' must be a matrix, a list of matrices, a segment mesh (vb/is), or a wkpool")
 }
 
-## default tolerance: one part in 'pixels' of the smaller side of the
-## projected bounding box of the input vertices (the d3 screen-space idea)
+## default tolerance: one part in 'pixels' of the larger side of the
+## projected bounding box of the input vertices (the d3 screen-space idea);
+## the larger side, so that a single parallel or meridian (zero width in
+## one direction) still gets a tolerance
 default_tolerance <- function(verts, target, source, pixels) {
   xy <- rproj_xy(verts, target, source = source)
   ok <- is.finite(xy[, 1L]) & is.finite(xy[, 2L])
   if (!any(ok)) {
     stop("no input vertex is projectable in 'target'; supply 'tolerance' explicitly")
   }
-  side <- min(diff(range(xy[ok, 1L])), diff(range(xy[ok, 2L])))
+  side <- max(diff(range(xy[ok, 1L])), diff(range(xy[ok, 2L])))
   if (!is.finite(side) || side <= 0) {
     stop("degenerate projected extent; supply 'tolerance' explicitly")
   }
