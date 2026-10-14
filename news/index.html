@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bigcurve</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0.9001</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.6.0</span>
       </span>
     </div>
 
@@ -25,6 +25,16 @@
       <ul class="nav navbar-nav"><li>
   <a href="../reference/index.html">Reference</a>
 </li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Articles
+
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu"><li>
+      <a href="../articles/bigcurve-and-s2.html">bigcurve and s2: drawing the sphere on a flat map</a>
+    </li>
+  </ul></li>
 <li>
   <a href="../news/index.html">Changelog</a>
 </li>
@@ -48,7 +58,17 @@
     </div>
 
     <div class="section level2">
-<h2 class="page-header" data-toc-text="development version" id="bigcurve-development-version">bigcurve (development version)<a class="anchor" aria-label="anchor" href="#bigcurve-development-version"></a></h2>
+<h2 class="page-header" data-toc-text="0.6.0" id="bigcurve-060">bigcurve 0.6.0<a class="anchor" aria-label="anchor" href="#bigcurve-060"></a></h2>
+<p>First CRAN release.</p>
+<ul><li><p>Edges shared by neighbouring polygons now refine to identical vertices. The refinement arithmetic always runs in one canonical direction and the chain is reversed afterwards, so <code>a -&gt; b</code> and <code>b -&gt; a</code> give bitwise identical new vertices (previously some differed in the last bits, so <code><a href="https://rdrr.io/pkg/wkpool/man/merge_coincident.html" class="external-link">wkpool::merge_coincident()</a></code> could not fuse them). An edge that occurs more than once with the same vertices (a merged pool, a segment mesh) is refined once and its new vertices are reused.</p></li>
+<li><p><code><a href="../reference/densify.html">densify()</a></code> now really defaults to <code>source = NULL</code>, so a wkpool input’s own crs is used. Previously the documented default was not the one in the code, and a pool in projected units was read as degrees.</p></li>
+<li><p>The default <code>tolerance</code> is now derived from the larger side of the projected extent, so a single parallel or meridian (zero width in one direction) no longer errors.</p></li>
+<li><p>Requires wkpool &gt;= 0.4.0 (CRAN) for pool input; the fallbacks for older wkpool versions, and the vctrs and utils dependencies they needed, are gone. glue is no longer used.</p></li>
+<li><p>New vignette, “bigcurve and s2”, contrasting bigcurve with s2.</p></li>
+<li><p>Credit and licence notice for the d3-geo resampling method in <code>inst/COPYRIGHTS</code>; Mike Bostock added as contributor and copyright holder.</p></li>
+</ul></div>
+    <div class="section level2">
+<h2 class="page-header" data-toc-text="0.5.0.9001" id="bigcurve-0509001">bigcurve 0.5.0.9001<a class="anchor" aria-label="anchor" href="#bigcurve-0509001"></a></h2>
 <ul><li><p><code><a href="../reference/densify.html">densify()</a></code> carries wkpool path provenance (<code>.path</code> and the paths table, wkpool &gt;= 0.3.0.9003) through refinement: every refined segment inherits the path of the input segment it descends from, and added vertices are interior to their path, so cycles, ring roles and exact feature reconstruction (<code><a href="https://rdrr.io/pkg/wkpool/man/cycles_to_wkt.html" class="external-link">wkpool::cycles_to_wkb()</a></code>) survive densification.</p></li>
 <li><p>The default input coordinate system is now ‘EPSG:4326’ rather than ‘OGC:CRS84’ throughout (<code><a href="../reference/densify.html">densify()</a></code>, <code><a href="../reference/rproj_xy.html">rproj_xy()</a></code>). Authority codes are axis-normalized on the way into PROJ, so input remains lon,lat either way; ‘EPSG:4326’ is simply the more familiar name.</p></li>
 <li><p><code><a href="../reference/densify.html">densify()</a></code> gains crs awareness for wkpool input: <code>source</code> now defaults to <code>NULL</code>, and a pool built with wkpool &gt;= 0.3.0.9000 supplies its own crs (as captured from the original geometry by <code><a href="https://rdrr.io/pkg/wkpool/man/establish_topology.html" class="external-link">wkpool::establish_topology()</a></code>). An explicit <code>source</code> still wins, and inputs with no crs fall back to ‘EPSG:4326’.</p></li>
@@ -86,7 +106,7 @@
 <li><p>Links directly to the system PROJ library (&gt;= 8.0) via configure and pkg-config; the libproj package (removed from CRAN) is no longer used. Windows builds use the PROJ shipped with Rtools.</p></li>
 <li><p>Dropped terra, geodist, geosphere, glue, reproj, and all undeclared dependencies; hard dependencies are now cpp11 (LinkingTo) and system PROJ only.</p></li>
 <li><p>Spherical great circle midpoints are used (consistent with d3-geo); this is a display densification tool, not an ellipsoidal geodesy one.</p></li>
-<li><p>README rewritten around <code><a href="../reference/densify.html">densify()</a></code>, with a graticule example using <code><a href="https://hypertidy.github.io/textures/reference/quad.html" class="external-link">textures::segs()</a></code> (textures and maps added to Suggests).</p></li>
+<li><p>README rewritten around <code><a href="../reference/densify.html">densify()</a></code>, with a graticule example using <code>textures::segs()</code> (textures and maps added to Suggests).</p></li>
 </ul></div>
 </div>
     <div class="section level2">

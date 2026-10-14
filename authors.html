@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">bigcurve</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0.9001</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.6.0</span>
       </span>
     </div>
 
@@ -25,6 +25,16 @@
       <ul class="nav navbar-nav"><li>
   <a href="reference/index.html">Reference</a>
 </li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Articles
+
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu"><li>
+      <a href="articles/bigcurve-and-s2.html">bigcurve and s2: drawing the sphere on a flat map</a>
+    </li>
+  </ul></li>
 <li>
   <a href="news/index.html">Changelog</a>
 </li>
@@ -49,12 +59,16 @@
 
 
       <ul class="list-unstyled"><li>
-          <p><strong>Michael D. Sumner</strong>. Author, maintainer.
+          <p><strong>Michael D. Sumner</strong>. Author, maintainer, copyright holder.
           </p>
         </li>
         <li>
           <p><strong>Simon Wotherspoon</strong>. Contributor.
           <br><small>wrote SGAT::trackMdpts, the ancestor of the spherical midpoint used here</small></p>
+        </li>
+        <li>
+          <p><strong>Mike Bostock</strong>. Contributor, copyright holder.
+          <br><small>author of the 'd3-geo' adaptive resampling method ported here; see inst/COPYRIGHTS</small></p>
         </li>
       </ul></div>
     <div class="section level2 citation-section">
@@ -66,14 +80,14 @@
 
 
     <p>Sumner M (2026).
-<em>bigcurve: Adaptive Densifying of Lines</em>.
-R package version 0.5.0.9001, <a href="https://github.com/hypertidy/bigcurve" class="external-link">https://github.com/hypertidy/bigcurve</a>.
+<em>bigcurve: Adaptive Densification of Lines for Map Projections</em>.
+R package version 0.6.0, <a href="https://github.com/hypertidy/bigcurve" class="external-link">https://github.com/hypertidy/bigcurve</a>.
 </p>
     <pre>@Manual{,
-  title = {bigcurve: Adaptive Densifying of Lines},
+  title = {bigcurve: Adaptive Densification of Lines for Map Projections},
   author = {Michael D. Sumner},
   year = {2026},
-  note = {R package version 0.5.0.9001},
+  note = {R package version 0.6.0},
   url = {https://github.com/hypertidy/bigcurve},
 }</pre>
 
