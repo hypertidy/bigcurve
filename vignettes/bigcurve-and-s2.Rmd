@@ -10,9 +10,14 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>",
                       fig.width = 7, fig.height = 4.5)
-have <- all(vapply(c("s2", "wk", "wkpool", "PROJ"), requireNamespace,
+have <- all(vapply(c("s2", "wk", "wkpool"), requireNamespace,
                    logical(1), quietly = TRUE))
 knitr::opts_chunk$set(eval = have)
+## drawing uses the PROJ package; only run it where PROJ can find its
+## database and build a transform
+proj_ok <- have && requireNamespace("PROJ", quietly = TRUE) &&
+  isTRUE(tryCatch(!is.null(PROJ::proj_trans_create("OGC:CRS84", "EPSG:3857")),
+                  error = function(e) FALSE))
 ```
 
 If you already use s2 (directly, or through sf, where it is the default
@@ -125,11 +130,13 @@ Densify it for a map centred on Australia and draw both readings. Grey is
 the planar reading (sides along parallels and meridians), black is the
 geodesic reading with bigcurve's added vertices (the points).
 
-```{r box-plot}
+```{r box-densify}
 prj <- "+proj=laea +lon_0=130 +lat_0=-30"
 pool <- wkpool::establish_topology(wk::as_wkb(box))
 dense <- densify(pool, prj)
+```
 
+```{r box-plot, eval = proj_ok}
 ## the planar reading: sides that follow parallels and meridians
 lon <- seq(100, 160, by = 0.5)
 planar <- rbind(cbind(lon, -35), cbind(160, seq(-35, -20, by = 0.5)),
@@ -226,7 +233,7 @@ The fast general path is wk and PROJ: build the transform once with
 `wk::wk_transform()`. Any other tool that projects (sf, terra) works too,
 since the densified vertices are ordinary longitude, latitude points.
 
-```{r together-draw}
+```{r together-draw, eval = proj_ok}
 geom <- wkpool::cycles_to_wkb(wkpool::merge_coincident(out))
 drawn <- wk::wk_transform(geom, PROJ::proj_trans_create(wk::wk_crs(geom), prj))
 dc <- wk::wk_coords(drawn)
