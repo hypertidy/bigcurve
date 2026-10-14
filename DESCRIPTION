@@ -28,6 +28,7 @@ BugReports: https://github.com/hypertidy/bigcurve/issues
 Suggests:
     knitr,
     maps,
+    PROJ,
     rmarkdown,
     s2,
     testthat (>= 3.0.0),

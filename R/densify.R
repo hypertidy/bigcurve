@@ -17,7 +17,9 @@
 #'
 #' Coordinates are returned in the coordinates of `source` (geographic by
 #' default): project the result yourself for plotting, e.g. with
-#' [rproj_xy()] or your tool of choice.
+#' [rproj_xy()] for a matrix or, for wk geometry (such as
+#' `wkpool::segments_to_wkb()` of a refined pool), with `wk::wk_transform()`
+#' and a `PROJ::proj_trans_create()` transform.
 #'
 #' Points that cannot be projected (for example beyond the horizon of an
 #' orthographic projection) do not error: segments touching them are left

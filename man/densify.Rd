@@ -66,7 +66,9 @@ transforms are used and each point is projected exactly once.
 
 Coordinates are returned in the coordinates of \code{source} (geographic by
 default): project the result yourself for plotting, e.g. with
-\code{\link[=rproj_xy]{rproj_xy()}} or your tool of choice.
+\code{\link[=rproj_xy]{rproj_xy()}} for a matrix or, for wk geometry (such as
+\code{wkpool::segments_to_wkb()} of a refined pool), with \code{wk::wk_transform()}
+and a \code{PROJ::proj_trans_create()} transform.
 
 Points that cannot be projected (for example beyond the horizon of an
 orthographic projection) do not error: segments touching them are left

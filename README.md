@@ -106,18 +106,21 @@ c(input = nrow(wkpool::pool_vertices(pool)),
 #>  input output 
 #>    240    744
 
-## project the refined segments for display
-v <- wkpool::pool_vertices(out)
-s <- wkpool::pool_segments(out)
-xy <- rproj_xy(cbind(v$x, v$y), prj)
-p0 <- xy[match(s$.vx0, v$.vx), ]
-p1 <- xy[match(s$.vx1, v$.vx), ]
-plot(rbind(p0, p1), type = "n", asp = 1, axes = FALSE, xlab = "", ylab = "")
-segments(p0[, 1], p0[, 2], p1[, 1], p1[, 2])
-points(xy, pch = 19, cex = 0.3)
+## back to geometry, then project with wk and PROJ (the fast general path)
+geom <- wkpool::segments_to_wkb(out)
+drawn <- wk::wk_transform(geom, PROJ::proj_trans_create(wk::wk_crs(geom), prj))
+xy <- wk::wk_coords(drawn)
+plot(range(xy$x), range(xy$y), type = "n", asp = 1, axes = FALSE, xlab = "", ylab = "")
+plot(drawn, add = TRUE)
+points(xy$x, xy$y, pch = 19, cex = 0.3)
 ```
 
 <img src="man/figures/README-adaptive-wkpool-1.png" width="100%" />
+
+Output stays in longitude and latitude, so any projection tool can draw
+it; `wk::wk_transform()` with a `PROJ::proj_trans_create()` transform is
+the quickest general route for wk geometry, and `rproj_xy()` does the
+same for a plain coordinate matrix.
 
 ## bigcurve and s2
 
