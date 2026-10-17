@@ -2,22 +2,34 @@
 title: "bigcurve and s2: drawing the sphere on a flat map"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{bigcurve and s2}
+  %\VignetteIndexEntry{bigcurve and s2: drawing the sphere on a flat map}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>",
-                      fig.width = 7, fig.height = 4.5)
-have <- all(vapply(c("s2", "wk", "wkpool"), requireNamespace,
+                      fig.width = 7, fig.height = 4.5, dpi = 96,
+                      out.width = "100%")
+have <- all(vapply(c("s2", "wk", "wkpool", "maps"), requireNamespace,
                    logical(1), quietly = TRUE))
 knitr::opts_chunk$set(eval = have)
-## drawing uses the PROJ package; only run it where PROJ can find its
-## database and build a transform
+## the last drawing uses the PROJ package; only run it where PROJ can
+## find its database and build a transform
 proj_ok <- have && requireNamespace("PROJ", quietly = TRUE) &&
   isTRUE(tryCatch(!is.null(PROJ::proj_trans_create("OGC:CRS84", "EPSG:3857")),
                   error = function(e) FALSE))
+```
+
+```{r style, include = FALSE}
+## one colour per package in every figure
+col_s2 <- "#1a8a8a"
+col_bc <- "black"
+col_planar <- "grey50"
+col_coast <- "grey78"
+R <- 6378137
+coast <- do.call(cbind, maps::map(plot = FALSE)[1:2])
+coast[which(coast[, 1] > 180), ] <- NA
 ```
 
 If you already use s2 (directly, or through sf, where it is the default
@@ -31,15 +43,31 @@ is, and they answer different questions about it.**
 * bigcurve answers *"how many points do I need to draw this shape in a
   given map projection so that it looks right, and no more?"*
 
-This guide walks through the shared idea, where each package does its
-work, and how to use them together.
+In every figure below s2 is teal, bigcurve is black, and the planar
+reading of the same coordinates is a grey dashed line. One line runs
+through the whole guide: along latitude 60, from longitude 0 to 100.
+
+## At a glance
+
+| | s2 | bigcurve |
+|---|---|---|
+| Job | geometry on the sphere: predicates, areas, unions, distances | drawing: just enough vertices for one map |
+| Edges | great circles | great circles |
+| Works in | 3D unit vectors, no projection | the plane of the target map |
+| Tolerance measured | on the sphere (metres converted to an angle) | on the map, in the map's units |
+| Projections for tessellating | plate carree, Mercator, orthographic | anything PROJ can do |
+| Output | s2 geography, or projected coordinates | longitude, latitude, so any tool can project it |
+| Input | s2 geography | matrices, segment meshes, wkpool topology (so any wk-readable data) |
+| Planar edges to geodesic | yes, on import (`planar = TRUE`) | no |
 
 ```{r setup}
 library(bigcurve)
 library(s2)
+the_line <- rbind(c(0, 60), c(100, 60))
+line <- s2_make_line(the_line[, 1], the_line[, 2])
 ```
 
-## The shared idea: an edge is a great circle
+## What is a line between two points?
 
 Give a computer two points in longitude and latitude and ask for the line
 between them. There are two common answers.
@@ -51,30 +79,73 @@ between them. There are two common answers.
 2. The **geodesic** answer: follow the shortest path over the surface of
    the Earth, a great circle arc.
 
-s2 takes the second answer for every edge, and so does bigcurve. Take a
-line along latitude 60 from longitude 0 to longitude 100. The planar
-middle of that line is (50, 60). The great circle middle is a long way
-north of it:
+s2 takes the second answer for every edge, and so does bigcurve. The
+planar middle of our line is (50, 60). The great circle middle is a long
+way north of it:
 
 ```{r midpoint}
-line <- s2_make_line(c(0, 100), c(60, 60))
 s2_as_text(s2_interpolate_normalized(line, 0.5))
 
 ## how far is the planar middle from the true line, in metres?
 s2_distance(s2_lnglat(50, 60), line)
 ```
 
-More than a thousand kilometres. Neither answer is wrong, they are two
+```{r fig-meanings, echo = FALSE, fig.width = 9, fig.height = 4.6}
+gc_path <- function(a, b, n = 400) {
+  l <- s2_make_line(c(a[1], b[1]), c(a[2], b[2]))
+  p <- s2_interpolate_normalized(l, seq(0, 1, length.out = n))
+  as.matrix(wk::wk_coords(p)[, c("x", "y")])
+}
+true_ll <- gc_path(the_line[1, ], the_line[2, ])
+planar_ll <- cbind(seq(0, 100, length.out = 200), 60)
+mid_planar <- c(50, 60)
+mid_gc <- as.numeric(wk::wk_coords(s2_interpolate_normalized(line, 0.5))[, c("x", "y")])
+gap_km <- s2_distance(s2_lnglat(mid_planar[1], mid_planar[2]),
+                      s2_lnglat(mid_gc[1], mid_gc[2])) / 1000
+
+op <- par(mfrow = c(1, 2), mar = c(0.5, 0.5, 2.2, 0.5))
+plot(NA, xlim = c(-20, 120), ylim = c(35, 85), asp = 1 / cos(60 * pi / 180),
+     axes = FALSE, xlab = "", ylab = "")
+lines(coast, col = col_coast)
+lines(planar_ll, col = col_planar, lty = 2, lwd = 2)
+lines(true_ll, col = col_bc, lwd = 2)
+segments(mid_planar[1], mid_planar[2], mid_gc[1], mid_gc[2], col = "firebrick", lwd = 1.5)
+points(rbind(mid_planar, mid_gc), pch = 21, bg = "white", cex = 1.1)
+points(the_line, pch = 19)
+text(mean(c(mid_gc[1], mid_planar[1])), mean(c(mid_gc[2], mid_planar[2])),
+     sprintf("%.0f km", gap_km), pos = 4, col = "firebrick")
+title("Longitude and latitude as x and y", font.main = 1, cex.main = 1)
+
+ortho <- "+proj=ortho +lon_0=50 +lat_0=55 +R=6378137"
+ang <- seq(0, 2 * pi, length.out = 361)
+plot(R * cos(ang), R * sin(ang), type = "n", asp = 1, axes = FALSE, xlab = "", ylab = "")
+polygon(R * cos(ang), R * sin(ang), col = "grey97", border = "grey60")
+lines(rproj_xy(coast, ortho), col = col_coast)
+lines(rproj_xy(planar_ll, ortho), col = col_planar, lty = 2, lwd = 2)
+lines(rproj_xy(true_ll, ortho), col = col_bc, lwd = 2)
+mids <- rproj_xy(rbind(mid_planar, mid_gc), ortho)
+segments(mids[1, 1], mids[1, 2], mids[2, 1], mids[2, 2], col = "firebrick", lwd = 1.5)
+points(mids, pch = 21, bg = "white", cex = 1.1)
+points(rproj_xy(the_line, ortho), pch = 19)
+title("The same two points on the globe", font.main = 1, cex.main = 1)
+legend("bottomleft", bty = "n", cex = 0.85,
+       lty = c(2, 1), lwd = 2, col = c(col_planar, col_bc),
+       legend = c("planar: straight in lon, lat", "geodesic: great circle (s2, bigcurve)"))
+par(op)
+```
+
+More than a thousand kilometres. Neither answer is wrong: they are two
 different shapes that happen to share their vertices. What matters is
 knowing which one your data means. s2 makes the geodesic reading the
 default; bigcurve assumes it.
 
-bigcurve inserts its new vertices exactly on s2's arc. Densify the same
-line and ask s2 how far each new vertex is from the line:
+## Does bigcurve draw s2's line?
+
+Yes. bigcurve inserts its new vertices exactly on s2's arc. Densify the
+line and ask s2 how far each new vertex is from it:
 
 ```{r on-the-arc}
-d <- densify(segment(c(0, 100), c(60, 60)),
-             "+proj=laea +lon_0=50 +lat_0=60", tolerance = 1000)
+d <- densify(the_line, "+proj=laea +lon_0=50 +lat_0=60", tolerance = 1000)
 nrow(d)
 max(s2_distance(s2_lnglat(d[, 1], d[, 2]), line))
 ```
@@ -83,7 +154,7 @@ A few nanometres, which is floating point noise. The added vertices
 change nothing about the shape on the sphere; they only make it explicit
 for a flat drawing.
 
-## Where the work happens
+## Where is the work done?
 
 s2 does all its work on the sphere itself. Internally every point is a
 unit vector in three dimensions, and there is no map projection anywhere
@@ -97,154 +168,226 @@ endpoints. If it is further than `tolerance` (in the map's own units,
 usually metres) the edge is split and both halves are checked again. This
 is the adaptive resampling that Mike Bostock wrote for d3-geo.
 
-That one difference explains most of what follows:
-
-* A tolerance in bigcurve is "how far may the drawn line stray on the
-  map". The default is about one part in 2048 of the map, roughly a
-  pixel on a large plot.
-* The same edge gets **different** numbers of vertices in different
-  projections, because the curve is a different shape on each map. An
-  edge that is straight in one projection gets no new vertices at all.
+So the same edge gets **different** numbers of vertices in different
+projections, because the curve is a different shape on each map:
 
 ```{r per-projection}
-s <- segment(c(0, 100), c(60, 60))
-c(laea  = nrow(densify(s, "+proj=laea +lon_0=50 +lat_0=60", tolerance = 1000)),
-  stere = nrow(densify(s, "+proj=stere +lat_0=90", tolerance = 1000)),
-  merc  = nrow(densify(s, "+proj=merc", tolerance = 1000)))
+c(laea  = nrow(densify(the_line, "+proj=laea +lon_0=50 +lat_0=60", tolerance = 1000)),
+  stere = nrow(densify(the_line, "+proj=stere +lat_0=90", tolerance = 1000)),
+  merc  = nrow(densify(the_line, "+proj=merc", tolerance = 1000)))
 ```
 
-## Same shape, two readings
-
-Here is a "box" written with four corners, from longitude 100 to 160 and
-latitude -35 to -20. As planar data its sides are parallels and
-meridians. As s2 (and bigcurve) read it, the north and south sides are
-great circles, and they bow away from the equator:
-
-```{r box}
-box <- s2_make_polygon(c(100, 160, 160, 100), c(-35, -35, -20, -20))
-south <- s2_make_line(c(100, 160), c(-35, -35))
-s2_as_text(s2_interpolate_normalized(south, 0.5))
-```
-
-Densify it for a map centred on Australia and draw both readings. Grey is
-the planar reading (sides along parallels and meridians), black is the
-geodesic reading with bigcurve's added vertices (the points).
-
-```{r box-densify}
-prj <- "+proj=laea +lon_0=130 +lat_0=-30"
-pool <- wkpool::establish_topology(wk::as_wkb(box))
-dense <- densify(pool, prj)
-```
-
-```{r box-plot, eval = proj_ok}
-## the planar reading: sides that follow parallels and meridians
-lon <- seq(100, 160, by = 0.5)
-planar <- rbind(cbind(lon, -35), cbind(160, seq(-35, -20, by = 0.5)),
-                cbind(rev(lon), -20), cbind(100, seq(-20, -35, by = -0.5)))
-## back to geometry, then project with wk and PROJ
-## (merge_coincident() closes the ring where its last vertex repeats the first)
-geom <- wkpool::cycles_to_wkb(wkpool::merge_coincident(dense))
-to_map <- PROJ::proj_trans_create(wk::wk_crs(geom), prj)
-drawn <- wk::wk_transform(geom, to_map)
-flat <- wk::wk_transform(wk::xy(planar[, 1], planar[, 2], crs = "OGC:CRS84"), to_map)
-
-fc <- wk::wk_coords(flat)
-dc <- wk::wk_coords(drawn)
-op <- par(mar = rep(0.5, 4))
-plot(range(fc$x, dc$x), range(fc$y, dc$y), type = "n", asp = 1,
-     axes = FALSE, xlab = "", ylab = "")
-lines(fc$x, fc$y, col = "grey60", lwd = 3)
-plot(drawn, lwd = 1.5, add = TRUE)
-points(dc$x, dc$y, pch = 19, cex = 0.4)
-par(op)
-```
-
-The black shape is the one s2 measures when you ask for its area or test
-whether a point is inside. On this map, centred close to the box, the
-great circles are nearly straight, so the black outline is almost what
-you would get by joining the four corners; the parallels are what curve.
-On other maps the reverse is true, which is why bigcurve decides per
-projection. Drawing the grey shape while analysing the black one is how a
-map ends up disagreeing with its own analysis.
-
-## s2 can tessellate too
+## Where do the vertices go?
 
 s2 is not blind to this problem. Its C++ library has an *edge tessellator*
 that turns geodesic edges into chains of straight edges in a projection,
-and the R package exposes it when it writes data out:
+and the R package exposes it when it writes data out, for plate carree
+(longitude, latitude), Mercator and orthographic maps. Here is our line
+tessellated for Mercator by both packages, each asked for 1 km:
 
-```{r s2-tessellate}
-## geodesic edges, written as planar longitude, latitude within 1 km
-txt <- s2_as_text(line, planar = TRUE, tessellate_tol_m = 1000)
-length(wk::wk_vertices(wk::wkt(txt)))
+```{r tessellate}
+merc <- "+proj=merc +R=6378137"
+tol <- 1000
 
-## in s2's own Mercator projection
-merc <- wk::wk_handle(line, wk::wkt_writer(),
-                      s2_projection = s2_projection_mercator(),
-                      s2_tessellate_tol = 1000 / s2_earth_radius_meters())
-length(wk::wk_vertices(merc))
+## s2, in its own Mercator, then back to longitude and latitude
+m <- wk::wk_handle(line, wk::wkb_writer(),
+                   s2_projection = s2_projection_mercator(),
+                   s2_tessellate_tol = tol / s2_earth_radius_meters())
+v_s2 <- rproj_xy(as.matrix(wk::wk_coords(wk::wkb(m))[, c("x", "y")]),
+                 "OGC:CRS84", source = merc)
 
-## bigcurve, for PROJ's Mercator, within 1 km on the map
-nrow(densify(segment(c(0, 100), c(60, 60)), "+proj=merc", tolerance = 1000))
+## bigcurve, for the same Mercator
+v_bc <- densify(the_line, merc, tolerance = tol)
+
+c(s2 = nrow(v_s2), bigcurve = nrow(v_bc))
 ```
 
-The counts are similar, and that is the point: both packages are solving
-the same problem in the same spirit. The differences are practical.
+```{r fig-where, echo = FALSE, fig.width = 9, fig.height = 5.2}
+along <- function(ll) {
+  as.numeric(s2_distance(s2_lnglat(the_line[1, 1], the_line[1, 2]),
+                         s2_lnglat(ll[, 1], ll[, 2]))) / s2_length(line)
+}
+layout(matrix(1:2, 2), heights = c(3, 1.4))
+op <- par(mar = c(0.5, 0.5, 2.2, 0.5))
+xy_true <- rproj_xy(true_ll, merc)
+pad <- 6e5
+plot(NA, xlim = range(xy_true[, 1]) + c(-pad, pad),
+     ylim = range(xy_true[, 2]) + c(-pad, pad), asp = 1,
+     axes = FALSE, xlab = "", ylab = "")
+lines(rproj_xy(coast, merc), col = col_coast)
+lines(xy_true, col = "grey60", lwd = 4)
+points(sweep(rproj_xy(v_s2, merc), 2, c(0, 1.2e5), "+"), pch = 19, cex = 0.45, col = col_s2)
+points(sweep(rproj_xy(v_bc, merc), 2, c(0, 1.2e5), "-"), pch = 19, cex = 0.45, col = col_bc)
+title(sprintf("One line in Mercator, 1 km tolerance: s2 %d vertices, bigcurve %d",
+              nrow(v_s2), nrow(v_bc)), font.main = 1, cex.main = 1)
+legend("bottomright", bty = "n", pch = 19, col = c(col_s2, col_bc), cex = 0.85,
+       legend = c("s2 tessellation (drawn just above the line)",
+                  "bigcurve (drawn just below)"))
+par(mar = c(3.2, 7.5, 0.5, 0.5))
+plot(NA, xlim = c(0, 1), ylim = c(0.5, 2.5), axes = FALSE, xlab = "", ylab = "")
+segments(along(v_s2), 1.65, along(v_s2), 2.35, col = col_s2)
+segments(along(v_bc), 0.65, along(v_bc), 1.35, col = col_bc)
+axis(1, at = seq(0, 1, 0.25), labels = c("start", "", "half way", "", "end"))
+axis(2, at = c(2, 1), labels = c("s2", "bigcurve"), las = 1, tick = FALSE)
+mtext("position of each vertex along the line", side = 1, line = 2.1, cex = 0.85)
+par(op)
+```
 
-| | s2 tessellation | bigcurve |
-|---|---|---|
-| Projections | plate carree, Mercator, orthographic | anything PROJ can do (laea, stere, any EPSG code, custom strings) |
-| Tolerance measured | on the sphere (s2 takes metres and converts to an angle) | on the map, in the map's units |
-| Output coordinates | projected (or planar longitude, latitude) | the input's longitude, latitude, so you can project with any tool afterwards |
-| Input | s2 geography | matrices, segment meshes, wkpool topology (so any wk-readable data) |
-| Other direction | yes: planar edges to geodesic on import (`planar = TRUE`) | no |
+In Mercator the two come out close, in count and in placement: both are
+solving the same problem in the same spirit. The difference is in what
+"1 km" means.
 
-The "other direction" row deserves a sentence. If your data really are
-planar in longitude and latitude (a coastline digitised on a plate carree
-map, say), s2 can densify on the way *in* so that its geodesic edges
-follow the planar ones. bigcurve never does this. It always assumes the
-edges you hand it are great circles.
+## What does a tolerance mean?
+
+s2 measures its tolerance **on the sphere**; bigcurve measures it **on the
+map**. On a map that stretches distances, as Mercator does by a factor of
+two at latitude 60, those are not the same thing. And s2 can only aim at
+its three projections: for any other map the best it can do is tessellate
+in longitude and latitude and hope that is fine enough.
+
+The figure measures, for every drawn chord, how far it strays on the map
+from the true projected line.
+
+```{r fig-tolerance, echo = FALSE, fig.width = 9, fig.height = 4.2}
+map_error <- function(ll, prj) {
+  t <- along(ll)
+  xy <- rproj_xy(ll, prj)
+  out <- numeric(nrow(ll) - 1L)
+  for (i in seq_along(out)) {
+    arc <- rproj_xy(gc_path(ll[i, ], ll[i + 1, ], n = 64), prj)
+    a <- xy[i, ]; b <- xy[i + 1, ]
+    d <- b - a; L <- sqrt(sum(d^2))
+    p <- sweep(arc, 2, a)
+    out[i] <- max(abs(d[1] * p[, 2] - d[2] * p[, 1]) / L)
+  }
+  data.frame(t0 = t[-length(t)], t1 = t[-1], err = out)
+}
+step_lines <- function(e, ...) {
+  segments(e$t0, pmax(e$err, 1), e$t1, pmax(e$err, 1), ...)
+}
+stere <- "+proj=stere +lat_0=90 +lon_0=50 +R=6378137"
+v_s2_ll <- as.matrix(wk::wk_coords(wk::wkt(
+  s2_as_text(line, planar = TRUE, tessellate_tol_m = tol)))[, c("x", "y")])
+v_bc_st <- densify(the_line, stere, tolerance = tol)
+e_s2_merc <- map_error(v_s2, merc)
+e_bc_merc <- map_error(v_bc, merc)
+e_s2_st <- map_error(v_s2_ll, stere)
+e_bc_st <- map_error(v_bc_st, stere)
+
+op <- par(mfrow = c(1, 2), mar = c(3.4, 4.2, 3.2, 0.8))
+ylim <- c(1, max(c(e_s2_merc$err, e_bc_merc$err, e_s2_st$err, e_bc_st$err)) * 1.5)
+panel <- function(es2, ebc, main, s2_label) {
+  plot(NA, xlim = c(0, 1), ylim = ylim, log = "y", axes = FALSE,
+       xlab = "", ylab = "")
+  abline(h = tol, col = "grey60", lty = 3)
+  step_lines(ebc, col = col_bc, lwd = 3.5)
+  step_lines(es2, col = col_s2, lwd = 1.8)
+  axis(1, at = seq(0, 1, 0.5), labels = c("start", "half way", "end"))
+  at <- c(1, 10, 100, 1000, 1e4, 1e5)
+  at <- at[at <= ylim[2]]
+  axis(2, at = at, labels = c("1 m", "10 m", "100 m", "1 km", "10 km", "100 km")[seq_along(at)], las = 1)
+  mtext("drawn chord to true line, on the map", side = 2, line = 3.2, cex = 0.8)
+  title(main, font.main = 1, cex.main = 1)
+  legend("bottomleft", bty = "n", lwd = 2, col = c(col_s2, col_bc), cex = 0.8,
+         legend = c(sprintf("s2: %s (%d vertices)", s2_label, nrow(es2) + 1L),
+                    sprintf("bigcurve: 1 km on the map (%d vertices)", nrow(ebc) + 1L)))
+}
+panel(e_s2_merc, e_bc_merc, "Mercator (s2 can tessellate here)",
+      "1 km on the sphere")
+panel(e_s2_st, e_bc_st, "North polar stereographic (s2 cannot)",
+      "1 km in lon, lat, then projected")
+par(op)
+```
+
+On the left, s2's 1 km on the sphere becomes up to
+`r sprintf("%.1f", max(e_s2_merc$err) / 1000)` km on the Mercator map
+near the ends of the line, while bigcurve stays under 1 km everywhere.
+On the right, s2's longitude, latitude tessellation happens to be far
+finer than this map needs: `r nrow(v_s2_ll)` vertices for errors of tens
+of metres, where `r nrow(v_bc_st)` keep bigcurve under 1 km. On another
+map, or another line, the same tessellation could just as easily be too
+coarse. bigcurve's tolerance is always "how far may the drawn line stray
+on *this* map".
+
+The "planar edges to geodesic" row of the table deserves a sentence too.
+If your data really are planar in longitude and latitude (a coastline
+digitised on a plate carree map, say), s2 can densify on the way *in*
+(`s2_geog_from_wkb(..., planar = TRUE)`) so that its geodesic edges follow
+the planar ones. bigcurve never does this. It always assumes the edges
+you hand it are great circles.
 
 ## Using them together
 
 Because both packages agree on what an edge is, a natural pipeline is
-s2 for the analysis and bigcurve for the drawing. Here we cut Australia
-with the box above in s2, then densify what the cut produced for the same
-map centred on Australia:
+s2 for the analysis and bigcurve for the drawing. Here is a "box" written
+with four corners, from longitude 100 to 160 and latitude -35 to -20. We
+cut Australia with it in s2, then densify what the cut produced for a
+map in plain longitude and latitude:
 
 ```{r together}
+box <- s2_make_polygon(c(100, 160, 160, 100), c(-35, -35, -20, -20))
 aus <- s2_data_countries("Australia")
 cut <- s2_intersection(aus, box)
 
 pool <- wkpool::establish_topology(wk::as_wkb(cut))
-out <- densify(pool, prj)
+out <- densify(pool, "+proj=eqc")
 c(before = nrow(wkpool::pool_vertices(pool)),
   after  = nrow(wkpool::pool_vertices(out)))
 ```
 
-Only a handful of vertices are added, all along the long straight sides
-that the box contributed. The coastline is already finely detailed and is
-left alone. That economy is the purpose of adaptive densification: points
-are spent where the map bends the line, and nowhere else.
-
-To draw the result, turn the pool back into geometry and project it.
-The fast general path is wk and PROJ: build the transform once with
-`PROJ::proj_trans_create()` and stream the geometry through
-`wk::wk_transform()`. Any other tool that projects (sf, terra) works too,
-since the densified vertices are ordinary longitude, latitude points.
-
-```{r together-draw, eval = proj_ok}
+```{r fig-cut, echo = FALSE, fig.width = 9, fig.height = 6}
+v0 <- wkpool::pool_vertices(pool)
+v1 <- wkpool::pool_vertices(out)
+added <- v1[!v1$.vx %in% v0$.vx, ]
+flat <- function(x) wk::wk_set_geodesic(wk::wk_set_crs(x, NULL), FALSE)
 geom <- wkpool::cycles_to_wkb(wkpool::merge_coincident(out))
+
+op <- par(mar = c(2.5, 3.2, 2.2, 0.5))
+plot(NA, xlim = c(112, 155), ylim = c(-44, -10), asp = 1, xlab = "", ylab = "", las = 1)
+plot(flat(wk::as_wkb(aus)), col = "grey95", border = col_coast, add = TRUE)
+plot(flat(geom), col = "grey85", border = "grey40", add = TRUE)
+abline(h = c(-20, -35), col = col_planar, lty = 2, lwd = 1.5)
+text(c(154.5, 154.5), c(-20, -35), c("latitude -20", "latitude -35"),
+     pos = 3, col = col_planar, cex = 0.85)
+lines(gc_path(c(100, -20), c(160, -20)), col = col_bc, lwd = 1)
+points(added$x, added$y, pch = 19, cex = 0.8, col = col_bc)
+title(sprintf("Cutting Australia with the box: its north side is a great circle (%d vertices added)",
+              nrow(added)), font.main = 1, cex.main = 0.95)
+legend("bottomleft", bty = "n", cex = 0.85, lty = c(2, 1), pch = c(NA, 19),
+       col = c(col_planar, col_bc), lwd = c(1.5, 1),
+       legend = c("the box read as planar (parallels)",
+                  "the box as s2 and bigcurve read it, with added vertices"))
+par(op)
+```
+
+Read as s2 reads it, the box's north side is not latitude -20: it is a
+great circle that dips to
+`r sprintf("%.1f", min(gc_path(c(100, -20), c(160, -20))[, 2]))` in the
+middle, and that is the line s2 cut along. The coastline is already
+finely detailed and is left alone; the new vertices go only along the
+long sides the box contributed. Drawing the grey reading while analysing
+the black one is how a map ends up disagreeing with its own analysis.
+
+To draw the result in any other projection, turn the pool back into
+geometry and project it. The fast general path is wk and PROJ: build the
+transform once with `PROJ::proj_trans_create()` and stream the geometry
+through `wk::wk_transform()`. Any other tool that projects (sf, terra)
+works too, since the densified vertices are ordinary longitude, latitude
+points. Remember to densify for the map you are drawing:
+
+```{r together-draw, eval = proj_ok, fig.height = 3.5}
+prj <- "+proj=laea +lon_0=130 +lat_0=-30"
+geom <- wkpool::cycles_to_wkb(wkpool::merge_coincident(densify(pool, prj)))
 drawn <- wk::wk_transform(geom, PROJ::proj_trans_create(wk::wk_crs(geom), prj))
 dc <- wk::wk_coords(drawn)
 op <- par(mar = rep(0.5, 4))
 plot(range(dc$x), range(dc$y), type = "n", asp = 1,
      axes = FALSE, xlab = "", ylab = "")
-plot(drawn, col = "grey90", add = TRUE)
+plot(drawn, col = "grey85", add = TRUE)
 par(op)
 ```
 
-## Things that are the same, and things that are not
+## What else is the same, and what is not?
 
 * **Both are spherical.** s2 uses a sphere of radius about 6371 km; so
   does bigcurve's midpoint. Neither follows the ellipsoid. For drawing a
