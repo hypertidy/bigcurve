@@ -138,11 +138,15 @@ vertices.
 
 ## Graticules and shared boundaries
 
-A grid is the classic case. Each cell edge runs between two corners, so
-it is a great circle arc, and on a polar map nearly every one of them
-bends. An edge shared by two neighbouring cells gets exactly the same
-new vertices from both sides, so the cells still fit together after
-densifying.
+A grid of cells is a good test, with one catch worth knowing first. Each
+cell edge runs between two corners, so bigcurve (like s2) reads it as a
+great circle arc. The north and south sides of a cell are therefore
+*not* parallels of latitude: a parallel is a small circle, and the great
+circle between two corners on it cuts inside it, towards the pole. The
+meridian sides are great circles, and they bend on any map that is not
+centred on the pole. An edge shared by two neighbouring cells gets
+exactly the same new vertices from both sides, so the cells still fit
+together after densifying.
 
 ``` r
 lon <- seq(-180, 150, by = 30)
@@ -153,12 +157,12 @@ wkt <- sprintf("POLYGON ((%s %s, %s %s, %s %s, %s %s, %s %s))",
                cells$x, cells$y + 15, cells$x, cells$y)
 pool <- wkpool::establish_topology(wk::wkt(wkt, crs = "OGC:CRS84"))
 
-prj <- "+proj=laea +lon_0=0 +lat_0=-90"
+prj <- "+proj=laea +lon_0=0 +lat_0=-40"
 out <- densify(pool, prj)
 c(input = nrow(wkpool::pool_vertices(pool)),
   densified = nrow(wkpool::pool_vertices(out)))
 #>     input densified 
-#>       180       360
+#>       180       524
 ```
 
 Each cell was densified on its own, yet merging coincident vertices
@@ -169,14 +173,15 @@ densifying the shared edges once. The twins agree to the last bit:
 merged_after <- wkpool::pool_vertices(wkpool::merge_coincident(out))
 merged_first <- wkpool::pool_vertices(densify(wkpool::merge_coincident(pool), prj))
 nrow(merged_after)
-#> [1] 184
+#> [1] 254
 identical(sort(complex(real = merged_after$x, imaginary = merged_after$y)),
           sort(complex(real = merged_first$x, imaginary = merged_first$y)))
 #> [1] TRUE
 ```
 
 To draw it, turn the pool back into geometry and project with wk and
-PROJ, the fast general path for wk geometry:
+PROJ, the fast general path for wk geometry. The grey dashed lines are
+the true parallels, for comparison:
 
 ``` r
 geom <- wkpool::cycles_to_wkb(wkpool::merge_coincident(out))
@@ -185,11 +190,21 @@ xy <- wk::wk_coords(drawn)
 op <- par(mar = rep(0.5, 4))
 plot(range(xy$x), range(xy$y), type = "n", asp = 1, axes = FALSE, xlab = "", ylab = "")
 plot(drawn, add = TRUE, col = "grey95")
+for (y in seq(-75, -30, by = 15)) {
+  lines(rproj_xy(cbind(seq(-180, 180, by = 1), y), prj), col = "grey50", lty = 2)
+}
 points(xy$x, xy$y, pch = 19, cex = 0.3)
 par(op)
 ```
 
 <img src="man/figures/README-graticule-draw-1.png" width="100%" />
+
+The meridian sides curve with the map, and bigcurve follows them. The
+other sides sit just inside the parallels, as great circles should. If
+what you want is a true graticule, with sides that follow the parallels,
+the edges are not great circles at all: put the vertices along the
+parallels in longitude and latitude first (every degree, say), and
+`densify()` then has nothing left to do on those sides.
 
 ## The edges of the map
 
