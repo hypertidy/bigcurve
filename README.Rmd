@@ -231,7 +231,10 @@ parallels in longitude and latitude first (every degree, say), and
   `wkpool::merge_coincident(period_x = 360)`.
 * **A sphere, not an ellipsoid.** New vertices are great circle midpoints
   on a sphere, as in s2 and d3-geo. For drawing a map the difference is
-  invisible.
+  small; for geodesics on the ellipsoid use the
+  [geographiclib](https://CRAN.R-project.org/package=geographiclib)
+  package. On a 17,000 km route such as Hobart to London the WGS84
+  geodesic runs up to about 23 km to one side of the great circle.
 
 ## bigcurve and s2
 
