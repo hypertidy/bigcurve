@@ -12,6 +12,7 @@ Densify lines adaptively, as required by the curvature a map projection imposes 
 Useful links:
 \itemize{
   \item \url{https://github.com/hypertidy/bigcurve}
+  \item \url{https://hypertidy.github.io/bigcurve/}
   \item Report bugs at \url{https://github.com/hypertidy/bigcurve/issues}
 }
 

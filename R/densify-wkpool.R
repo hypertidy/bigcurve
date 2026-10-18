@@ -31,7 +31,7 @@ pool_crs_proj <- function(x) {
 
 densify_wkpool <- function(x, target, source = NULL,
                            tolerance = NULL, pixels = 2048L,
-                           max_depth = 16L) {
+                           max_depth = 16L, ellipsoid = FALSE) {
   if (!requireNamespace("wkpool", quietly = TRUE)) {
     stop("the 'wkpool' package is required to densify wkpool objects")
   }
@@ -57,6 +57,9 @@ densify_wkpool <- function(x, target, source = NULL,
 
   out <- densify_mesh_cpp(v$x, v$y, p0, p1,
                           source, target, tol, as.integer(max_depth))
+  if (ellipsoid) {
+    out <- ellipsoid_replay(out, nrow(v), p0, p1, as.integer(max_depth))
+  }
 
   ## mint ids for the appended vertices, continuing past the pool maximum
   n_old <- nrow(v)

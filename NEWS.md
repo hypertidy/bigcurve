@@ -2,6 +2,12 @@
 
 First CRAN release.
 
+* New `densify(ellipsoid = TRUE)` places new vertices on the WGS84
+  geodesic instead of the great circle, using the 'geographiclib'
+  package (in Suggests). The sphere still chooses how many vertices each
+  edge gets and at what fraction along it; each is then moved to the same
+  fraction of the geodesic. Shared edges still get identical vertices.
+
 * Edges shared by neighbouring polygons now refine to identical vertices.
   The refinement arithmetic always runs in one canonical direction and
   the chain is reversed afterwards, so `a -> b` and `b -> a` give bitwise

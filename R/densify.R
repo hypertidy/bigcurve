@@ -74,6 +74,14 @@
 #'   plot"; ignored when `tolerance` is supplied
 #' @param max_depth maximum bisection depth per input segment (each level
 #'   at most doubles the vertex count of a segment)
+#' @param ellipsoid if `TRUE`, new vertices are placed on the WGS84 geodesic
+#'   instead of the great circle, using the 'geographiclib' package (which
+#'   must be installed). The sphere still decides how many vertices each
+#'   edge gets and at what fraction along it; each one is then moved to the
+#'   same fraction of the geodesic between the same two endpoints. Input
+#'   vertices are unchanged, shared edges still get identical vertices, and
+#'   the input must be longitude, latitude. On long edges the two differ by
+#'   tens of kilometres (about 23 km at most from Hobart to London)
 #'
 #' @return the same kind of object as `x`, with vertices added: a matrix
 #'   for a path, a list of matrices for a list, a mesh with appended
@@ -88,19 +96,33 @@
 #' d <- densify(s, "+proj=laea +lon_0=147 +lat_0=-42")
 #' nrow(d)
 #' plot(rproj_xy(d, "+proj=laea +lon_0=147 +lat_0=-42"), type = "l", asp = 1)
+#'
+#' ## on the WGS84 ellipsoid rather than the sphere
+#' if (requireNamespace("geographiclib", quietly = TRUE)) {
+#'   e <- densify(d[c(1, nrow(d)), ], "+proj=laea +lon_0=147 +lat_0=-42",
+#'                ellipsoid = TRUE)
+#'   lines(rproj_xy(e, "+proj=laea +lon_0=147 +lat_0=-42"), col = "firebrick")
+#' }
 densify <- function(x, target, source = NULL,
-                    tolerance = NULL, pixels = 2048L, max_depth = 16L) {
-  stopifnot(is.numeric(pixels), pixels >= 1, is.numeric(max_depth))
+                    tolerance = NULL, pixels = 2048L, max_depth = 16L,
+                    ellipsoid = FALSE) {
+  stopifnot(is.numeric(pixels), pixels >= 1, is.numeric(max_depth),
+            isTRUE(ellipsoid) || isFALSE(ellipsoid))
   max_depth <- as.integer(max_depth)
+  if (ellipsoid) check_ellipsoid()
 
   if (inherits(x, "wkpool")) {
     return(densify_wkpool(x, target, source = source, tolerance = tolerance,
-                          pixels = pixels, max_depth = max_depth))
+                          pixels = pixels, max_depth = max_depth,
+                          ellipsoid = ellipsoid))
   }
   source <- source %||% default_crs()
 
   if (is.matrix(x)) {
     tol <- tolerance %||% default_tolerance(x, target, source, pixels)
+    if (ellipsoid) {
+      return(densify_path_ellipsoid(x, source, target, tol, max_depth))
+    }
     out <- densify_path_cpp(x[, 1L, drop = TRUE], x[, 2L, drop = TRUE],
                             source, target, tol, max_depth)
     return(cbind(out$x, out$y))
@@ -113,6 +135,10 @@ densify <- function(x, target, source = NULL,
                             as.integer(x$is[1L, ]) - 1L,
                             as.integer(x$is[2L, ]) - 1L,
                             source, target, tol, max_depth)
+    if (ellipsoid) {
+      out <- ellipsoid_replay(out, nrow(verts), as.integer(x$is[1L, ]) - 1L,
+                              as.integer(x$is[2L, ]) - 1L, max_depth)
+    }
     x$vb <- rbind(out$x, out$y, 0, 1)
     x$is <- rbind(out$s0 + 1L, out$s1 + 1L)
     return(x)
@@ -122,7 +148,8 @@ densify <- function(x, target, source = NULL,
     tol <- tolerance %||%
       default_tolerance(do.call(rbind, x), target, source, pixels)
     return(lapply(x, densify, target = target, source = source,
-                  tolerance = tol, pixels = pixels, max_depth = max_depth))
+                  tolerance = tol, pixels = pixels, max_depth = max_depth,
+                  ellipsoid = ellipsoid))
   }
 
   stop("'x' must be a matrix, a list of matrices, a segment mesh (vb/is), or a wkpool")
