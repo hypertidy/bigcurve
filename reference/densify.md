@@ -15,7 +15,8 @@ densify(
   source = NULL,
   tolerance = NULL,
   pixels = 2048L,
-  max_depth = 16L
+  max_depth = 16L,
+  ellipsoid = FALSE
 )
 ```
 
@@ -60,6 +61,17 @@ densify(
 
   maximum bisection depth per input segment (each level at most doubles
   the vertex count of a segment)
+
+- ellipsoid:
+
+  if `TRUE`, new vertices are placed on the WGS84 geodesic instead of
+  the great circle, using the 'geographiclib' package (which must be
+  installed). The sphere still decides how many vertices each edge gets
+  and at what fraction along it; each one is then moved to the same
+  fraction of the geodesic between the same two endpoints. Input
+  vertices are unchanged, shared edges still get identical vertices, and
+  the input must be longitude, latitude. On long edges the two differ by
+  tens of kilometres (about 23 km at most from Hobart to London)
 
 ## Value
 
@@ -133,4 +145,11 @@ d <- densify(s, "+proj=laea +lon_0=147 +lat_0=-42")
 nrow(d)
 #> [1] 38
 plot(rproj_xy(d, "+proj=laea +lon_0=147 +lat_0=-42"), type = "l", asp = 1)
+
+## on the WGS84 ellipsoid rather than the sphere
+if (requireNamespace("geographiclib", quietly = TRUE)) {
+  e <- densify(d[c(1, nrow(d)), ], "+proj=laea +lon_0=147 +lat_0=-42",
+               ellipsoid = TRUE)
+  lines(rproj_xy(e, "+proj=laea +lon_0=147 +lat_0=-42"), col = "firebrick")
+}
 ```

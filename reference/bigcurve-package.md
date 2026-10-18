@@ -17,6 +17,8 @@ Useful links:
 
 - <https://github.com/hypertidy/bigcurve>
 
+- <https://hypertidy.github.io/bigcurve/>
+
 - Report bugs at <https://github.com/hypertidy/bigcurve/issues>
 
 ## Author

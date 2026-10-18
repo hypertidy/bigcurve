@@ -215,7 +215,7 @@
 <li>
 <strong>The antimeridian.</strong> bigcurve keeps whatever longitudes you give it. An edge written from 170 to -170 refines continuously through 180, and an edge along 180 stays at 180. To join the two sides of the seam into one boundary, densify first and then use <code>wkpool::merge_coincident(period_x = 360)</code>.</li>
 <li>
-<strong>A sphere, not an ellipsoid.</strong> New vertices are great circle midpoints on a sphere, as in s2 and d3-geo. For drawing a map the difference is small; for geodesics on the ellipsoid use the <a href="https://CRAN.R-project.org/package=geographiclib" class="external-link">geographiclib</a> package. On a 17,000 km route such as Hobart to London the WGS84 geodesic runs up to about 23 km to one side of the great circle.</li>
+<strong>A sphere, not an ellipsoid.</strong> New vertices are great circle midpoints on a sphere, as in s2 and d3-geo. For drawing a map the difference is small; for geodesics on the ellipsoid use the <a href="https://CRAN.R-project.org/package=geographiclib" class="external-link">geographiclib</a> package, or pass <code>ellipsoid = TRUE</code> to <code><a href="reference/densify.html">densify()</a></code> (which uses it) to put the new vertices on the WGS84 geodesic. On a 17,000 km route such as Hobart to London the geodesic runs up to about 23 km to one side of the great circle.</li>
 </ul>
 </div>
 <div class="section level2">

@@ -227,8 +227,11 @@ then has nothing left to do on those sides.
   midpoints on a sphere, as in s2 and d3-geo. For drawing a map the
   difference is small; for geodesics on the ellipsoid use the
   [geographiclib](https://CRAN.R-project.org/package=geographiclib)
-  package. On a 17,000 km route such as Hobart to London the WGS84
-  geodesic runs up to about 23 km to one side of the great circle.
+  package, or pass `ellipsoid = TRUE` to
+  [`densify()`](https://hypertidy.github.io/bigcurve/reference/densify.md)
+  (which uses it) to put the new vertices on the WGS84 geodesic. On a
+  17,000 km route such as Hobart to London the geodesic runs up to about
+  23 km to one side of the great circle.
 
 ## bigcurve and s2
 
