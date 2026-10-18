@@ -26,6 +26,7 @@ Imports:
 URL: https://github.com/hypertidy/bigcurve, https://hypertidy.github.io/bigcurve/
 BugReports: https://github.com/hypertidy/bigcurve/issues
 Suggests:
+    geographiclib,
     knitr,
     maps,
     PROJ,
@@ -41,3 +42,4 @@ LinkingTo:
 SystemRequirements: PROJ (>= 8.0.0): libproj-dev (deb), proj-devel (rpm),
     proj (brew)
 Config/roxygen2/version: 8.0.0
+RoxygenNote: 7.3.1
