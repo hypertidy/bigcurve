@@ -241,8 +241,10 @@ par(op)
 
 - **Both are spherical.** s2 uses a sphere of radius about 6371 km; so
   does bigcurve’s midpoint. Neither follows the ellipsoid. For drawing a
-  map this makes no visible difference; for survey-grade distances use
-  geographiclib (through sf or geosphere).
+  map the difference is small (the WGS84 geodesic from Hobart to London
+  runs up to about 23 km to one side of the great circle). For distances
+  and paths on the ellipsoid use the geographiclib package
+  (GeographicLib is also inside sf and geosphere).
 - **Neither clips.** If part of a line is beyond the horizon of an
   orthographic map, s2 can intersect with
   [`s2_hemisphere()`](https://r-spatial.github.io/s2/reference/wk_handle.s2_geography.html)
