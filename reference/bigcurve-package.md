@@ -9,7 +9,8 @@ the adaptive resampling scheme of 'd3-geo'
 library, so any coordinate reference system it supports can be a target.
 Inputs can be coordinate matrices, segment meshes or vertex pool
 topology from 'wkpool', and edges shared by neighbouring polygons
-receive identical new vertices.
+receive identical new vertices. The adaptive resampling method is due to
+Mike Bostock's 'd3-geo' JavaScript library.
 
 ## See also
 
@@ -25,6 +26,10 @@ Useful links:
 
 **Maintainer**: Michael D. Sumner <mdsumner@gmail.com> \[copyright
 holder\]
+
+Authors:
+
+- Michael D. Sumner <mdsumner@gmail.com> \[copyright holder\]
 
 Other contributors:
 

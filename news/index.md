@@ -30,6 +30,13 @@ First CRAN release.
   projected extent, so a single parallel or meridian (zero width in one
   direction) no longer errors.
 
+- [`densify()`](https://hypertidy.github.io/bigcurve/reference/densify.md)
+  now errors clearly when given projected input (coordinates outside lon
+  \[-360, 360\] / lat \[-90, 90\]) instead of silently producing garbage
+  or densifying nothing. The source must be geographic; treating a
+  projected source’s edges as straight lines is a separate model that is
+  not yet implemented.
+
 - Requires wkpool \>= 0.4.0 (CRAN) for pool input; the fallbacks for
   older wkpool versions, and the vctrs and utils dependencies they
   needed, are gone. glue is no longer used.
