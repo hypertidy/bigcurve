@@ -166,8 +166,9 @@ following d3-geo (Bostock). The prototype `bisect()` interface is gone.
 
 - README rewritten around
   [`densify()`](https://hypertidy.github.io/bigcurve/reference/densify.md),
-  with a graticule example using `textures::segs()` (textures and maps
-  added to Suggests).
+  with a graticule example using
+  [`textures::segs()`](https://hypertidy.github.io/textures/reference/quad.html)
+  (textures and maps added to Suggests).
 
 ## bigcurve 0.0.1
 
