@@ -9,7 +9,7 @@ and cph) and its ISC licence notice is reproduced in inst/COPYRIGHTS.
 
 The package links to the system 'PROJ' library (>= 8.0), found with
 pkg-config by a configure script on Unix and macOS and through Rtools on
-Windows.
+Windows. The 'PROJ' R package is also in Suggests, used by a vignette.
 
 ## R CMD check results
 

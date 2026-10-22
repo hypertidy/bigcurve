@@ -12,13 +12,14 @@ Description: Densify lines adaptively, as required by the curvature a map
     projection imposes on them. Edges are read as great circle arcs, and
     vertices are inserted along them only where the projected curve
     deviates from a straight chord by more than a tolerance measured on the
-    map, following the adaptive resampling scheme of 'd3-geo'
+    map, following the adaptive resampling method of the 'd3-geo'
+    'JavaScript' library described in Bostock (2016)
     <https://github.com/d3/d3-geo>. Projections are computed with the
-    'PROJ' library, so any coordinate reference system it supports can be a
-    target. Inputs can be coordinate matrices, segment meshes or vertex pool
-    topology from 'wkpool', and edges shared by neighbouring polygons
-    receive identical new vertices. The adaptive resampling method is due to
-    Mike Bostock's 'd3-geo' JavaScript library.
+    'PROJ' coordinate transformation library (<https://proj.org/>), so any
+    coordinate reference system it supports can be a target. Inputs can be
+    coordinate matrices, segment meshes or vertex pool topology from
+    'wkpool', and edges shared by neighbouring polygons receive identical
+    new vertices.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
