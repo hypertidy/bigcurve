@@ -4,9 +4,4 @@
 ^README\.Rmd$
 ^CODE_OF_CONDUCT\.md$
 ^\.github$
-^example.R$
-^MIGRATION.md$
 ^cran-comments\.md$
-^_pkgdown\.yml$
-^docs$
-^pkgdown$

@@ -104,6 +104,13 @@ edge that 's2' uses. Data whose edges are meant as straight lines in
 longitude and latitude describe a different shape, and densifying them
 here changes it.
 
+The source must be geographic (longitude, latitude): reading projected
+coordinates (eastings, northings in metres) as great circle arcs is
+meaningless, so input whose coordinates fall outside lon \verb{[-360, 360]}
+or lat \verb{[-90, 90]} is rejected with an error. Reproject to lon,lat
+first. (Treating a projected source's edges as straight lines in its
+own plane is a separate model, not yet implemented.)
+
 Shared edges stay shared. An edge refines to the same vertices whichever
 way it is written, bit for bit, so two neighbouring polygons get
 identical new vertices along their common boundary (and

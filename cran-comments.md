@@ -1,4 +1,4 @@
-## Submission
+## bigcurve 0.6.0
 
 This is a new release.
 

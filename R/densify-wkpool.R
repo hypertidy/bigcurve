@@ -42,6 +42,7 @@ densify_wkpool <- function(x, target, source = NULL,
          "which cannot be carried through great circle densification. ",
          "Drop them (rebuild the pool from xy geometry) and try again.")
   }
+  check_geographic(cbind(v$x, v$y))
   s <- wkpool::pool_segments(x)
   if (nrow(s) < 1L) {
     return(x)

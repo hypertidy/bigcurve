@@ -45,6 +45,13 @@
 #' longitude and latitude describe a different shape, and densifying them
 #' here changes it.
 #'
+#' The source must be geographic (longitude, latitude): reading projected
+#' coordinates (eastings, northings in metres) as great circle arcs is
+#' meaningless, so input whose coordinates fall outside lon `[-360, 360]`
+#' or lat `[-90, 90]` is rejected with an error. Reproject to lon,lat
+#' first. (Treating a projected source's edges as straight lines in its
+#' own plane is a separate model, not yet implemented.)
+#'
 #' Shared edges stay shared. An edge refines to the same vertices whichever
 #' way it is written, bit for bit, so two neighbouring polygons get
 #' identical new vertices along their common boundary (and
@@ -119,6 +126,7 @@ densify <- function(x, target, source = NULL,
   source <- source %||% default_crs()
 
   if (is.matrix(x)) {
+    check_geographic(x)
     tol <- tolerance %||% default_tolerance(x, target, source, pixels)
     if (ellipsoid) {
       return(densify_path_ellipsoid(x, source, target, tol, max_depth))
@@ -130,6 +138,7 @@ densify <- function(x, target, source = NULL,
 
   if (is.list(x) && !is.null(x$vb) && !is.null(x$is)) {
     verts <- t(x$vb[1:2, , drop = FALSE])
+    check_geographic(verts)
     tol <- tolerance %||% default_tolerance(verts, target, source, pixels)
     out <- densify_mesh_cpp(verts[, 1L], verts[, 2L],
                             as.integer(x$is[1L, ]) - 1L,
@@ -170,4 +179,30 @@ default_tolerance <- function(verts, target, source, pixels) {
     stop("degenerate projected extent; supply 'tolerance' explicitly")
   }
   side / pixels
+}
+
+## Guard: densify() reads every edge as a great circle arc in lon,lat, so
+## the source must be geographic. Projected coordinates (metre eastings and
+## northings) fed to the spherical midpoint as if they were degrees produce
+## silent garbage, and out-of-range values that fail to project silently
+## densify nothing. Catch both loudly. A geographic source is always within
+## lon [-360, 360] (allowing the 0-360 convention and unwrapped crossings)
+## and lat [-90, 90]; anything beyond is taken to be projected. Treating a
+## projected source's edges as straight lines is a separate, not-yet-built
+## model (see the linear-source discussion in MIGRATION.md).
+check_geographic <- function(verts) {
+  lon <- verts[, 1L]
+  lat <- verts[, 2L]
+  eps <- 1e-6
+  bad <- (is.finite(lon) & abs(lon) > 360 + eps) |
+    (is.finite(lat) & abs(lat) > 90 + eps)
+  if (any(bad)) {
+    stop("densify() needs a geographic (longitude, latitude) source: ",
+         sum(bad), " coordinate(s) fall outside lon [-360, 360] / ",
+         "lat [-90, 90], which looks like projected data. Densifying ",
+         "projected edges as great circle arcs is not supported; ",
+         "reproject to lon,lat first. See ?densify.",
+         call. = FALSE)
+  }
+  invisible(verts)
 }

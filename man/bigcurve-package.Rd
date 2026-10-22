@@ -6,7 +6,7 @@
 \alias{bigcurve-package}
 \title{bigcurve: Adaptive Densification of Lines for Map Projections}
 \description{
-Densify lines adaptively, as required by the curvature a map projection imposes on them. Edges are read as great circle arcs, and vertices are inserted along them only where the projected curve deviates from a straight chord by more than a tolerance measured on the map, following the adaptive resampling scheme of 'd3-geo' \url{https://github.com/d3/d3-geo}. Projections are computed with the 'PROJ' library, so any coordinate reference system it supports can be a target. Inputs can be coordinate matrices, segment meshes or vertex pool topology from 'wkpool', and edges shared by neighbouring polygons receive identical new vertices.
+Densify lines adaptively, as required by the curvature a map projection imposes on them. Edges are read as great circle arcs, and vertices are inserted along them only where the projected curve deviates from a straight chord by more than a tolerance measured on the map, following the adaptive resampling scheme of 'd3-geo' \url{https://github.com/d3/d3-geo}. Projections are computed with the 'PROJ' library, so any coordinate reference system it supports can be a target. Inputs can be coordinate matrices, segment meshes or vertex pool topology from 'wkpool', and edges shared by neighbouring polygons receive identical new vertices. The adaptive resampling method is due to Mike Bostock's 'd3-geo' JavaScript library.
 }
 \seealso{
 Useful links:
@@ -19,6 +19,11 @@ Useful links:
 }
 \author{
 \strong{Maintainer}: Michael D. Sumner \email{mdsumner@gmail.com} [copyright holder]
+
+Authors:
+\itemize{
+  \item Michael D. Sumner \email{mdsumner@gmail.com} [copyright holder]
+}
 
 Other contributors:
 \itemize{

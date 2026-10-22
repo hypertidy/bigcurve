@@ -17,7 +17,8 @@ Description: Densify lines adaptively, as required by the curvature a map
     'PROJ' library, so any coordinate reference system it supports can be a
     target. Inputs can be coordinate matrices, segment meshes or vertex pool
     topology from 'wkpool', and edges shared by neighbouring polygons
-    receive identical new vertices.
+    receive identical new vertices. The adaptive resampling method is due to
+    Mike Bostock's 'd3-geo' JavaScript library.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -41,5 +42,4 @@ LinkingTo:
     cpp11
 SystemRequirements: PROJ (>= 8.0.0): libproj-dev (deb), proj-devel (rpm),
     proj (brew)
-Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.1
+Config/roxygen2/version: 8.1.0

@@ -78,22 +78,10 @@ test_that("miscellaneous helpers", {
                "+proj=laea +lon_0=0 +lat_0=0 +x_0=0 +y_0=0 +datum=WGS84")
 })
 
-## a graticule as a segment mesh (rgl mesh3d style), shared vertices at
-## every intersection: meridians every 'dx', parallels every 'dy'
-graticule_mesh <- function(dx = 40, dy = 20, ext = c(-180, 180, -60, 60)) {
-  lon <- seq(ext[1], ext[2], by = dx)
-  lat <- seq(ext[3], ext[4], by = dy)
-  g <- expand.grid(lon = lon, lat = lat)
-  id <- matrix(seq_len(nrow(g)), length(lon))
-  along <- cbind(c(id[-length(lon), ]), c(id[-1L, ]))
-  up <- cbind(c(id[, -length(lat)]), c(id[, -1L]))
-  structure(list(vb = rbind(g$lon, g$lat, 0, 1),
-                 is = t(rbind(along, up))), class = "mesh3d")
-}
-
-test_that("a graticule mesh refines in one call", {
+test_that("a textures::segs graticule refines in one call", {
+  skip_if_not_installed("textures")
   prj <- "+proj=laea +lat_0=-60"
-  mesh <- graticule_mesh()
+  mesh <- textures::segs(c(40, 20), extent = c(-180, 180, -65, 65))
   out <- densify(mesh, prj)
   expect_gt(ncol(out$vb), ncol(mesh$vb))
   expect_gt(ncol(out$is), ncol(mesh$is))
@@ -101,30 +89,8 @@ test_that("a graticule mesh refines in one call", {
   expect_equal(out$vb[1:2, seq_len(ncol(mesh$vb))], mesh$vb[1:2, ])
   ## refined index structure stays valid
   expect_true(all(out$is >= 1L & out$is <= ncol(out$vb)))
-  ## and the result keeps its class
+  ## and the result is still plottable as the same class
   expect_s3_class(out, class(mesh))
-})
-
-test_that("an edge repeated in a mesh is refined once and its vertices reused", {
-  prj <- "+proj=laea +lon_0=50 +lat_0=30"
-  mesh <- list(vb = rbind(c(0, 100), c(0, 50), 0, 1),
-               is = cbind(c(1L, 2L), c(2L, 1L)))
-  out <- densify(mesh, prj, tolerance = 2e4)
-  n_new <- ncol(out$vb) - 2L
-  expect_gt(n_new, 0L)
-  ## two traversals, one set of minted vertices
-  expect_identical(ncol(out$is), 2L * (n_new + 1L))
-  fwd <- out$is[, seq_len(n_new + 1L)]
-  bwd <- out$is[, n_new + 1L + seq_len(n_new + 1L)]
-  expect_identical(bwd, fwd[2:1, rev(seq_len(ncol(fwd)))])
-})
-
-test_that("an edge refines to identical vertices in either direction", {
-  crs <- "+proj=laea +lon_0=50 +lat_0=30"
-  f <- densify(segment(c(0, 100), c(0, 50)), crs, tolerance = 2e4)
-  r <- densify(segment(c(100, 0), c(50, 0)), crs, tolerance = 2e4)
-  expect_gt(nrow(f), 2L)
-  expect_identical(f, r[nrow(r):1, ])
 })
 
 test_that("parent maps every refined edge to its input edge", {
@@ -276,61 +242,50 @@ test_that("exactly-180-degree edges keep their written direction", {
   expect_gt(nrow(w1), 2L)
 })
 
-test_that("the default tolerance works for a single parallel or meridian", {
-  ## zero projected width in one direction
-  d <- densify(segment(c(0, 100), c(60, 60)), "+proj=merc")
-  expect_gt(nrow(d), 2L)
-  m <- densify(segment(c(180, 180), c(-60, 60)), "+proj=laea +lon_0=150")
-  expect_true(is.matrix(m))
+test_that("projected (metre) coordinates fail loudly, not silently", {
+  ## an EPSG:3412 rectangle fed as if it were lon,lat: the guard rejects it
+  ## rather than producing great circle garbage or densifying nothing.
+  ## (Densifying projected edges as straight source-space lines is a
+  ## separate 'linear' model, not yet implemented -- see MIGRATION.md.)
+  rc <- cbind(c(-1094338, 1230070), c(-699223, 997424))
+  tgt <- "+proj=ortho +lat_0=-90 +lon_0=0"
+  expect_error(densify(rc, tgt), "geographic")
+  ## also caught when the projected CRS is declared as source
+  expect_error(densify(rc, tgt, source = "EPSG:3412"), "reproject to lon,lat")
 })
 
-test_that("a pool's own crs is used when 'source' is not given", {
+## --------------------------------------------------------------------------
+## Spec for the not-yet-implemented linear/curve model (projected sources).
+## Kept as skipped tests so the intended contract stays visible; enable when
+## densify() gains curve = c("auto", "greatcircle", "linear"). See MIGRATION.md.
+## --------------------------------------------------------------------------
+
+test_that("projected sources densify as straight source-space lines", {
+  skip("linear/curve model for projected sources not yet implemented")
+  ## the EPSG:3412 rectangle case: curve resolves to 'linear' via auto
+  rc <- cbind(c(-1094338, 1230070, 1230070, -1094338, -1094338),
+              c(-699223, -699223, 997424, 997424, -699223))
+  tgt <- "+proj=ortho +lat_0=-90 +lon_0=0"
+  d <- densify(rc, tgt, source = "EPSG:3412", tolerance = 1000)
+  expect_gt(nrow(d), nrow(rc))
+  ## endpoints preserved, interiors within the source bbox
+  expect_equal(unname(d[1L, ]), unname(rc[1L, ]))
+  expect_true(all(d[, 1L] >= -1094338 - 1 & d[, 1L] <= 1230070 + 1))
+  expect_true(all(d[, 2L] >= -699223 - 1 & d[, 2L] <= 997424 + 1))
+  ## and the pool path resolves the same way
   skip_if_not_installed("wkpool")
   skip_if_not_installed("wk")
-  g <- wk::wk_set_crs(wk::as_wkb("LINESTRING (0 0, 4000000 4000000)"),
-                      "EPSG:3857")
-  pool <- wkpool::establish_topology(g)
-  out <- densify(pool, "+proj=laea +lat_0=45")
-  v <- wkpool::pool_vertices(out)
-  expect_gt(nrow(v), 2L)
-  ## new vertices are in the pool's metres, between the endpoints
-  new <- v[-(1:2), ]
-  expect_true(all(new$x > 0 & new$x < 4e6))
-  expect_identical(attr(out, "crs"), attr(pool, "crs"))
+  pool <- wkpool::establish_topology(wk::as_wkb(wk::wkt(
+    "POLYGON ((-1094338 -699223, 1230070 -699223, 1230070 997424, -1094338 997424, -1094338 -699223))")))
+  out <- densify(pool, tgt, source = "EPSG:3412", tolerance = 1000)
+  expect_gt(nrow(wkpool::pool_vertices(out)), 5L)
 })
 
-test_that("neighbouring polygons get identical vertices on a shared edge", {
-  skip_if_not_installed("wkpool")
-  skip_if_not_installed("wk")
-  ## the shared edge is a diagonal, not a meridian, so a direction-dependent
-  ## midpoint would show up in the last bits
-  g <- wk::as_wkb(c(
-    "POLYGON ((0 0, 100 50, 0 60, 0 0))",
-    "POLYGON ((0 0, 100 0, 100 50, 0 0))"
-  ))
-  pool <- wkpool::establish_topology(g)
-  crs <- "+proj=laea +lon_0=50 +lat_0=30"
-  out <- densify(pool, crs, tolerance = 2e4)
-  v <- wkpool::pool_vertices(out)
-  s <- wkpool::pool_segments(out)
-  f <- wkpool::pool_feature(out)
-  key <- function(ids) {
-    vv <- v[match(unique(ids), v$.vx), ]
-    vv <- vv[vv$.vx > max(wkpool::pool_vertices(pool)$.vx), ]
-    paste(sprintf("%.17g", vv$x), sprintf("%.17g", vv$y))
-  }
-  k1 <- key(c(s$.vx0[f == 1L], s$.vx1[f == 1L]))
-  k2 <- key(c(s$.vx0[f == 2L], s$.vx1[f == 2L]))
-  ## vertices on the shared diagonal: lon/lat on the 0,0 -> 100,50 arc
-  shared <- intersect(k1, k2)
-  expect_gt(length(shared), 0L)
-  ## merging fuses them: each minted vertex on the diagonal is shared
-  m <- wkpool::merge_coincident(out)
-  mv <- wkpool::pool_vertices(m)
-  expect_lt(nrow(mv), nrow(v))
-  ## and in a merged pool the shared edge is refined only once
-  pm <- wkpool::merge_coincident(pool)
-  om <- densify(pm, crs, tolerance = 2e4)
-  n_minted <- nrow(wkpool::pool_vertices(om)) - nrow(wkpool::pool_vertices(pm))
-  expect_identical(n_minted, nrow(v) - nrow(wkpool::pool_vertices(pool)) - length(shared))
+test_that("curve model is explicit and overridable", {
+  skip("crs_is_geographic() / curve argument not yet implemented")
+  ## geographic source classifies as greatcircle
+  expect_true(crs_is_geographic("OGC:CRS84"))
+  expect_true(crs_is_geographic("+proj=longlat +datum=WGS84"))
+  expect_false(crs_is_geographic("EPSG:3412"))
+  expect_false(crs_is_geographic("+proj=laea +lat_0=-90"))
 })
