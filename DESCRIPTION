@@ -35,6 +35,7 @@ Suggests:
     rmarkdown,
     s2,
     testthat (>= 3.0.0),
+    textures,
     wk,
     wkpool (>= 0.4.0)
 VignetteBuilder: knitr
