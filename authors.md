@@ -5,8 +5,8 @@
 - **Michael D. Sumner**. Author, maintainer, copyright holder.
 
 - **Simon Wotherspoon**. Contributor.  
-  wrote SGAT::trackMdpts, the ancestor of the spherical midpoint used
-  here
+  developed the spherical track midpoint method that the great circle
+  midpoint used here is based on
 
 - **Mike Bostock**. Contributor, copyright holder.  
   author of the 'd3-geo' adaptive resampling method ported here; see
