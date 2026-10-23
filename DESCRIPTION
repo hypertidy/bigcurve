@@ -4,7 +4,7 @@ Version: 0.6.0
 Authors@R: c(
     person("Michael D.", "Sumner", , "mdsumner@gmail.com", role = c("aut", "cre", "cph")),
     person("Simon", "Wotherspoon", role = "ctb",
-           comment = "wrote SGAT::trackMdpts, the ancestor of the spherical midpoint used here"),
+           comment = "developed the spherical track midpoint method that the great circle midpoint used here is based on"),
     person("Mike", "Bostock", role = c("ctb", "cph"),
            comment = "author of the 'd3-geo' adaptive resampling method ported here; see inst/COPYRIGHTS")
   )

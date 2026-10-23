@@ -27,7 +27,7 @@ Authors:
 
 Other contributors:
 \itemize{
-  \item Simon Wotherspoon (wrote SGAT::trackMdpts, the ancestor of the spherical midpoint used here) [contributor]
+  \item Simon Wotherspoon (developed the spherical track midpoint method that the great circle midpoint used here is based on) [contributor]
   \item Mike Bostock (author of the 'd3-geo' adaptive resampling method ported here; see inst/COPYRIGHTS) [contributor, copyright holder]
 }
 
