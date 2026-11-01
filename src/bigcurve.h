@@ -6,8 +6,12 @@
 //
 // This header has no dependency on R or PROJ. The transform is injected
 // via the Transform interface; bindings supply an adapter (see densify.cpp
-// for the PROJ one). Keep it that way: this file is the piece that gets
-// reused in Python (or rewritten in Rust) later.
+// for the PROJ one). Keep it that way.
+//
+// FROZEN (see hypertidy/bigcurve#14). New engine work happens in the Rust
+// crate bigcurve (hypertidy/bigcurve-rs), which reproduces this header
+// bit for bit and adds edge models and a batched forward map. This file
+// gets bug fixes only; new engine features land in the crate first.
 
 #include <algorithm>
 #include <cmath>
