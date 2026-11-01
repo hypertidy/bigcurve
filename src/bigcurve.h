@@ -18,6 +18,21 @@
 #include <cstddef>
 #include <vector>
 
+// No floating-point contraction (fused multiply-add). The canonical engine,
+// the Rust crate bigcurve, never fuses a multiply and an add; clang (arm64
+// by default) and GCC (any target with FMA, e.g. -march=x86-64-v3) would,
+// which moves midpoint tests and so vertex counts. canon/check.cpp checks
+// this header against the crate's canon tables. A pragma rather than
+// -ffp-contract=off, which R CMD check flags as a non-portable flag. It
+// applies to the rest of the including file as well.
+#if defined(__clang__)
+#pragma clang fp contract(off)
+#elif defined(__GNUC__)
+#pragma GCC optimize("fp-contract=off")
+#elif defined(_MSC_VER)
+#pragma fp_contract(off)
+#endif
+
 namespace bigcurve {
 
 const double DEG2RAD = 0.017453292519943295;
