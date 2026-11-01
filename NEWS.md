@@ -1,3 +1,10 @@
+# bigcurve (development version)
+
+* The C++ engine `src/bigcurve.h` is frozen: bug fixes only. New engine
+  features land first in the Rust crate bigcurve
+  (hypertidy/bigcurve-rs), which becomes the canonical engine once it
+  covers `ellipsoid = TRUE` (#14).
+
 # bigcurve 0.6.0
 
 First CRAN release.
