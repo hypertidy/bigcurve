@@ -49,6 +49,10 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="bigcurve-development-version">bigcurve (development version)<a class="anchor" aria-label="anchor" href="#bigcurve-development-version"></a></h2>
+<ul><li>The C++ engine <code>src/bigcurve.h</code> is frozen: bug fixes only. New engine features land first in the Rust crate bigcurve (hypertidy/bigcurve-rs), which becomes the canonical engine once it covers <code>ellipsoid = TRUE</code> (<a href="https://github.com/hypertidy/bigcurve/issues/14" class="external-link">#14</a>).</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.0" id="bigcurve-060">bigcurve 0.6.0<a class="anchor" aria-label="anchor" href="#bigcurve-060"></a></h2>
 <p>First CRAN release.</p>
 <ul><li><p>New <code>densify(ellipsoid = TRUE)</code> places new vertices on the WGS84 geodesic instead of the great circle, using the ‘geographiclib’ package (in Suggests). The sphere still chooses how many vertices each edge gets and at what fraction along it; each is then moved to the same fraction of the geodesic. Shared edges still get identical vertices.</p></li>
