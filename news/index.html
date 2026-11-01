@@ -50,7 +50,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="bigcurve-development-version">bigcurve (development version)<a class="anchor" aria-label="anchor" href="#bigcurve-development-version"></a></h2>
-<ul><li>The C++ engine <code>src/bigcurve.h</code> is frozen: bug fixes only. New engine features land first in the Rust crate bigcurve (hypertidy/bigcurve-rs), which becomes the canonical engine once it covers <code>ellipsoid = TRUE</code> (<a href="https://github.com/hypertidy/bigcurve/issues/14" class="external-link">#14</a>).</li>
+<ul><li><p>The C++ engine <code>src/bigcurve.h</code> is frozen: bug fixes only. New engine features land first in the Rust crate bigcurve (hypertidy/bigcurve-rs), which becomes the canonical engine once it covers <code>ellipsoid = TRUE</code> (<a href="https://github.com/hypertidy/bigcurve/issues/14" class="external-link">#14</a>).</p></li>
+<li><p>The C++ engine turns floating-point contraction (fused multiply-add) off with a pragma, so it gives the same vertices as the Rust engine on every platform. With contraction (clang on arm64, GCC with FMA targets) some midpoint tests went the other way and vertex counts changed. <code>canon/check.cpp</code> checks the header against the Rust crate’s canon tables (<a href="https://github.com/hypertidy/bigcurve/issues/15" class="external-link">#15</a>).</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.0" id="bigcurve-060">bigcurve 0.6.0<a class="anchor" aria-label="anchor" href="#bigcurve-060"></a></h2>
