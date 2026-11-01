@@ -5,6 +5,13 @@
   (hypertidy/bigcurve-rs), which becomes the canonical engine once it
   covers `ellipsoid = TRUE` (#14).
 
+* The C++ engine turns floating-point contraction (fused multiply-add)
+  off with a pragma, so it gives the same vertices as the Rust engine on
+  every platform. With contraction (clang on arm64, GCC with FMA targets)
+  some midpoint tests went the other way and vertex counts changed.
+  `canon/check.cpp` checks the header against the Rust crate's canon
+  tables (#15).
+
 # bigcurve 0.6.0
 
 First CRAN release.

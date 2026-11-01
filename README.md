@@ -252,12 +252,12 @@ d3-geo's `resampleLineTo`, and carries d3-geo's ISC notice in
 
 The Rust crate [bigcurve](https://crates.io/crates/bigcurve)
 ([hypertidy/bigcurve-rs](https://github.com/hypertidy/bigcurve-rs)) is
-where new engine work happens. It reproduces this header bit for bit
+the canonical engine. It reproduces this header bit for bit
 on the package's own cases, and adds edge models (straight lines in a
 projected source, alongside great circles) and a batched forward map.
 The header is frozen: it gets bug fixes, but new engine features land in
-the crate first, and the crate becomes the canonical engine once it
-covers `ellipsoid = TRUE`
+the crate first, and `canon/` checks the header against the crate's
+canon tables
 ([plan](https://github.com/hypertidy/bigcurve/issues/14)).
 
 ------------------------------------------------------------------------

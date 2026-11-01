@@ -1,0 +1,27 @@
+# The C++ engine against the canon tables of bigcurve-rs (canon/README.md)
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+name: canon
+
+jobs:
+  canon:
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }} ${{ matrix.cxx }} ${{ matrix.flags }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, cxx: g++, flags: -O2}
+          # FMA available: the pragma in src/bigcurve.h must keep it off
+          - {os: ubuntu-latest, cxx: g++, flags: -O2 -march=x86-64-v3}
+          - {os: ubuntu-latest, cxx: clang++, flags: -O2 -march=x86-64-v3}
+          # arm64, where clang contracts by default
+          - {os: macos-latest, cxx: clang++, flags: -O2}
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ matrix.cxx }} -std=c++17 ${{ matrix.flags }} -Wall -o canon/check canon/check.cpp
+      - run: ./canon/check canon/canon-tables.txt
